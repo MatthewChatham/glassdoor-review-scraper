@@ -24,6 +24,7 @@ Overall rating
 import time
 import pandas as pd
 from argparse import ArgumentParser
+import argparse
 import logging
 import logging.config
 from selenium import webdriver as wd
@@ -31,7 +32,8 @@ import selenium
 import numpy as np
 from schema import SCHEMA
 import json
-import timeit
+import urllib
+import datetime as dt
 
 start = time.time()
 
@@ -51,12 +53,48 @@ parser.add_argument('-p', '--password', help='Password to sign in to GD.')
 parser.add_argument('-c', '--credentials', help='Credentials file')
 parser.add_argument('-l', '--limit', default=25,
                     action='store', type=int, help='Max reviews to scrape')
+parser.add_argument('--start_from_url', action='store_true',
+                    help='Start scraping from the passed URL.')
+parser.add_argument(
+    '--max_date', help='Latest review date to scrape.\
+    Only use this option with --start_from_url.\
+    You also must have sorted Glassdoor reviews ASCENDING by date.',
+    type=lambda s: dt.datetime.strptime(s, "%Y-%m-%d"))
+parser.add_argument(
+    '--min_date', help='Earliest review date to scrape.\
+    Only use this option with --start_from_url.\
+    You also must have sorted Glassdoor reviews DESCENDING by date.',
+    type=lambda s: dt.datetime.strptime(s, "%Y-%m-%d"))
 args = parser.parse_args()
+
+if not args.start_from_url and (args.max_date or args.min_date):
+    raise Exception(
+        'Invalid argument combination:\
+        No starting url passed, but max/min date specified.'
+    )
+elif args.max_date and args.min_date:
+    raise Exception(
+        'Invalid argument combination:\
+        Both min_date and max_date specified.'
+    )
+
 if args.credentials:
     with open(args.credentials) as f:
         d = json.loads(f.read())
         args.username = d['username']
         args.password = d['password']
+else:
+    try:
+        with open('secret.json') as f:
+            d = json.loads(f.read())
+            args.username = d['username']
+            args.password = d['password']
+    except FileNotFoundError:
+        msg = 'Please provide Glassdoor credentials.\
+        Credentials can be provided as a secret.json file in the working\
+        directory, or passed at the command line using the --username and\
+        --password flags.'
+        raise Exception(msg)
 
 
 logger = logging.getLogger(__name__)
@@ -241,11 +279,19 @@ def extract_from_page():
     for review in reviews:
         if not is_featured(review):
             data = extract_review(review)
-            logger.info(f'Scraped data for "{data["review_title"]}"')
+            logger.info(f'Scraped data for "{data["review_title"]}"\
+({data["date"]})')
             res.loc[idx[0]] = data
         else:
             logger.info('Discarding a featured review')
         idx[0] = idx[0] + 1
+
+    if args.max_date and \
+        (pd.to_datetime(res['date']).max() > args.max_date) or \
+            args.min_date and \
+            (pd.to_datetime(res['date']).min() < args.min_date):
+        logger.info('Date limit reached, ending process')
+        date_limit_reached[0] = True
 
     return res
 
@@ -276,7 +322,7 @@ def no_reviews():
 
 
 def navigate_to_reviews():
-    logger.info('Navigating to company overview')
+    logger.info('Navigating to company reviews')
 
     browser.get(args.url)
     time.sleep(1)
@@ -285,7 +331,6 @@ def navigate_to_reviews():
         logger.info('No reviews to scrape. Bailing!')
         return False
 
-    logger.info('Navigating to reviews')
     reviews_cell = browser.find_element_by_xpath(
         "//*[@id='EmpLinksWrapper']/div/a[2]")
     reviews_path = reviews_cell.get_attribute('href')
@@ -324,26 +369,69 @@ def get_browser():
     return browser
 
 
+def get_current_page():
+    logger.info('Getting current page number')
+    paging_control = browser.find_element_by_class_name('pagingControls')
+    current = int(paging_control.find_element_by_xpath(
+        '//ul//li[contains\
+        (concat(\' \',normalize-space(@class),\' \'),\' current \')]\
+        //span[contains(concat(\' \',\
+        normalize-space(@class),\' \'),\' disabled \')]')
+        .text.replace(',', ''))
+    return current
+
+
+def verify_date_sorting():
+    logger.info('Date limit specified, verifying date sorting')
+    ascending = urllib.parse.parse_qs(
+        args.url)['sort.ascending'] == 'true'
+
+    if args.min_date and ascending:
+        raise Exception(
+            'min_date required reviews to be sorted DESCENDING by date.')
+    elif args.max_date and not ascending:
+        raise Exception(
+            'max_date requires reviews to be sorted ASCENDING by date.')
+
+
 browser = get_browser()
 page = [1]
 idx = [0]
+date_limit_reached = [False]
 
 
 def main():
+
+    logger.info(f'Scraping up to {args.limit} reviews.')
+
     res = pd.DataFrame([], columns=SCHEMA)
 
     sign_in()
 
-    reviews_exist = navigate_to_reviews()
-    if not reviews_exist:
-        return
+    if not args.start_from_url:
+        reviews_exist = navigate_to_reviews()
+        if not reviews_exist:
+            return
+    elif args.max_date or args.min_date:
+        verify_date_sorting()
+        browser.get(args.url)
+        page[0] = get_current_page()
+        logger.info(f'Starting from page {page[0]:,}.')
+        time.sleep(1)
+    else:
+        browser.get(args.url)
+        page[0] = get_current_page()
+        logger.info(f'Starting from page {page[0]:,}.')
+        time.sleep(1)
 
     reviews_df = extract_from_page()
     res = res.append(reviews_df)
 
     # import pdb;pdb.set_trace()
 
-    while more_pages() and len(res) < args.limit:
+    while more_pages() and\
+            len(res) < args.limit and\
+            not date_limit_reached[0]:
         go_to_next_page()
         reviews_df = extract_from_page()
         res = res.append(reviews_df)
