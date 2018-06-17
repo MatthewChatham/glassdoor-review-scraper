@@ -384,7 +384,7 @@ def get_current_page():
 def verify_date_sorting():
     logger.info('Date limit specified, verifying date sorting')
     ascending = urllib.parse.parse_qs(
-        args.url)['sort.ascending'] == 'true'
+        args.url)['sort.ascending'] == ['true']
 
     if args.min_date and ascending:
         raise Exception(
