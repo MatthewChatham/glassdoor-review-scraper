@@ -168,23 +168,37 @@ def scrape(field, review, author):
             res = 0
         return res
 
+    def expand_show_more(section):
+        try:
+            more_content = section.find_element_by_class_name('moreContent')
+            more_link = more_content.find_element_by_class_name('moreLink')
+            more_link.click()
+        except Exception:
+            pass
+
     def scrape_pros(review):
         try:
-            res = review.find_element_by_class_name('pros').text
+            pros = review.find_element_by_class_name('pros')
+            expand_show_more(pros)
+            res = pros.text.replace('\nShow Less', '')
         except Exception:
             res = np.nan
         return res
 
     def scrape_cons(review):
         try:
-            res = review.find_element_by_class_name('cons').text
+            cons = review.find_element_by_class_name('cons')
+            expand_show_more(cons)
+            res = cons.text.replace('\nShow Less', '')
         except Exception:
             res = np.nan
         return res
 
     def scrape_advice(review):
         try:
-            res = review.find_element_by_class_name('adviceMgmt').text
+            advice = review.find_element_by_class_name('adviceMgmt')
+            expand_show_more(advice)
+            res = advice.text.replace('\nShow Less', '')
         except Exception:
             res = np.nan
         return res
