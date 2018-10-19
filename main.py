@@ -346,7 +346,7 @@ def navigate_to_reviews():
         return False
 
     reviews_cell = browser.find_element_by_xpath(
-        "//*[@id='EmpLinksWrapper']/div/a[2]")
+        "//*[@id='EmpLinksWrapper']/div//a[2]")
     reviews_path = reviews_cell.get_attribute('href')
     browser.get(reviews_path)
     time.sleep(1)
