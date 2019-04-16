@@ -34,11 +34,12 @@ from schema import SCHEMA
 import json
 import urllib
 import datetime as dt
+import os
+import re
 
 start = time.time()
 
-DEFAULT_URL = ('https://www.glassdoor.com/Overview/Working-at-'
-               'Premise-Data-Corporation-EI_IE952471.11,35.htm')
+DEFAULT_URL = ('https://www.glassdoor.ca/Reviews/Manulife-Reviews-E9373.htm')
 
 parser = ArgumentParser()
 parser.add_argument('-u', '--url',
@@ -78,23 +79,23 @@ elif args.max_date and args.min_date:
         Both min_date and max_date specified.'
     )
 
-if args.credentials:
-    with open(args.credentials) as f:
-        d = json.loads(f.read())
-        args.username = d['username']
-        args.password = d['password']
-else:
-    try:
-        with open('secret.json') as f:
-            d = json.loads(f.read())
-            args.username = d['username']
-            args.password = d['password']
-    except FileNotFoundError:
-        msg = 'Please provide Glassdoor credentials.\
-        Credentials can be provided as a secret.json file in the working\
-        directory, or passed at the command line using the --username and\
-        --password flags.'
-        raise Exception(msg)
+if args.username is None or args.password is None:
+	if args.credentials:
+		with open(args.credentials) as f:
+			d = json.loads(f.read())
+			args.username = d['username']
+			args.password = d['password']
+		try:
+			with open('secret.json') as f:
+				d = json.loads(f.read())
+				args.username = d['username']
+				args.password = d['password']
+		except FileNotFoundError:
+			msg = 'Please provide Glassdoor credentials.\
+			Credentials can be provided as a secret.json file in the working\
+			directory, or passed at the command line using the --username and\
+			--password flags.'
+			raise Exception(msg)
 
 
 logger = logging.getLogger(__name__)
@@ -114,8 +115,27 @@ logging.getLogger('selenium').setLevel(logging.CRITICAL)
 def scrape(field, review, author):
 
     def scrape_date(review):
-        return review.find_element_by_tag_name(
-            'time').get_attribute('datetime')
+        return review.find_element_by_tag_name('time').get_attribute('datetime')
+			
+    def scrape_outlook(review):
+        res = review.find_element_by_xpath('//span[contains(text(),"Outlook")]')
+        res = re.search(r'(\w+) Outlook',res.text,re.IGNORECASE)
+        if res is not None:
+            return res.group(1)
+        else:
+            return ''
+        
+    def scrape_ceo(review):
+        res = review.find_element_by_xpath('//span[contains(text(),"CEO")]')
+        res = re.search(r'^(\w+) of',res.text,re.IGNORECASE)
+        if res is not None:
+            return res.group(1)
+        else:
+            return ''
+        
+    def scrape_recommend(review):
+        res = review.find_element_by_xpath('//span[contains(text(),"Recommend")]')
+        return res.text
 
     def scrape_emp_title(review):
         if 'Anonymous Employee' not in review.text:
@@ -153,7 +173,7 @@ def scrape(field, review, author):
 
     def scrape_years(review):
         first_par = review.find_element_by_class_name(
-            'reviewBodyCell').find_element_by_tag_name('p')
+            'reviewBodyCell').find_element_by_class_name('mainText')
         if '(' in first_par.text:
             res = first_par.text[first_par.text.find('(') + 1:-1]
         else:
@@ -162,8 +182,10 @@ def scrape(field, review, author):
 
     def scrape_helpful(review):
         try:
-            helpful = review.find_element_by_class_name('helpfulCount')
-            res = helpful[helpful.find('(') + 1: -1]
+            helpful = review.find_element_by_class_name(
+                    'voteHelpful').find_element_by_class_name(
+                            'count').find_element_by_tag_name('span')
+            res = helpful.text
         except Exception:
             res = 0
         return res
@@ -245,6 +267,9 @@ def scrape(field, review, author):
         scrape_emp_title,
         scrape_location,
         scrape_status,
+		scrape_outlook,
+        scrape_recommend,
+        scrape_ceo,
         scrape_rev_title,
         scrape_years,
         scrape_helpful,
@@ -357,7 +382,7 @@ def navigate_to_reviews():
 def sign_in():
     logger.info(f'Signing in to {args.username}')
 
-    url = 'https://www.glassdoor.com/profile/login_input.htm'
+    url = 'https://www.glassdoor.ca/profile/login_input.htm'
     browser.get(url)
 
     # import pdb;pdb.set_trace()
@@ -441,7 +466,6 @@ def main():
     reviews_df = extract_from_page()
     res = res.append(reviews_df)
 
-    # import pdb;pdb.set_trace()
 
     while more_pages() and\
             len(res) < args.limit and\
