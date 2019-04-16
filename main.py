@@ -4,6 +4,11 @@ main.py
 Matthew Chatham
 June 6, 2018
 
+Modified by Sean Softcheck
+2019-16-04
+Defaults to Canadian domain
+Doesn't error when passing credentials on command line
+
 Given a company's landing page on Glassdoor and an output filename, scrape the
 following information about each employee review:
 
@@ -11,6 +16,9 @@ Review date
 Employee position
 Employee location
 Employee status (current/former)
+employee's outlook
+employee's view of CEO
+employee would recommend
 Review title
 Employee years at company
 Number of helpful votes
@@ -42,6 +50,7 @@ start = time.time()
 DEFAULT_URL = ('https://www.glassdoor.ca/Reviews/Manulife-Reviews-E9373.htm')
 
 parser = ArgumentParser()
+parser.add_argument('--domain', help='Default country domain, "ca" or "com"',choices=['ca','com'],default='ca')
 parser.add_argument('-u', '--url',
                     help='URL of the company\'s Glassdoor landing page.',
                     default=DEFAULT_URL)
@@ -109,8 +118,6 @@ formatter = logging.Formatter(
 ch.setFormatter(formatter)
 
 logging.getLogger('selenium').setLevel(logging.CRITICAL)
-logging.getLogger('selenium').setLevel(logging.CRITICAL)
-
 
 def scrape(field, review, author):
 
@@ -301,7 +308,6 @@ def extract_from_page():
     def extract_review(review):
         author = review.find_element_by_class_name('authorInfo')
         res = {}
-        # import pdb;pdb.set_trace()
         for field in SCHEMA:
             res[field] = scrape(field, review, author)
 
@@ -382,10 +388,8 @@ def navigate_to_reviews():
 def sign_in():
     logger.info(f'Signing in to {args.username}')
 
-    url = 'https://www.glassdoor.ca/profile/login_input.htm'
+    url = 'https://www.glassdoor.{domain}/profile/login_input.htm'.format(domain=args.domain)
     browser.get(url)
-
-    # import pdb;pdb.set_trace()
 
     email_field = browser.find_element_by_name('username')
     password_field = browser.find_element_by_name('password')
