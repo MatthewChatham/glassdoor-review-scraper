@@ -32,7 +32,6 @@ Overall rating
 import time
 import pandas as pd
 from argparse import ArgumentParser
-import argparse
 import logging
 import logging.config
 from selenium import webdriver as wd
@@ -42,7 +41,6 @@ from schema import SCHEMA
 import json
 import urllib
 import datetime as dt
-import os
 import re
 
 start = time.time()
@@ -133,8 +131,9 @@ def scrape(field, review, author):
             return ''
         
     def scrape_ceo(review):
-        res = review.find_element_by_xpath('//span[contains(text(),"CEO")]')
-        res = re.search(r'^(\w+) of',res.text,re.IGNORECASE)
+        res = review.find_element_by_xpath('//span[contains(text(),"CEO")]/span')
+        res = res.get_attribute('textContent')
+        res = re.search(r'^(\w+) of',res, re.IGNORECASE)
         if res is not None:
             return res.group(1)
         else:
@@ -145,16 +144,8 @@ def scrape(field, review, author):
         return res.text
 
     def scrape_emp_title(review):
-        if 'Anonymous Employee' not in review.text:
-            try:
-                res = author.find_element_by_class_name(
-                    'authorJobTitle').text.split('-')[1]
-            except Exception:
-                logger.warning('Failed to scrape employee_title')
-                res = np.nan
-        else:
-            res = np.nan
-        return res
+        return author.find_element_by_class_name(
+                    'authorJobTitle').text.split('-')[1].strip()
 
     def scrape_location(review):
         if 'in' in review.text:
@@ -168,12 +159,7 @@ def scrape(field, review, author):
         return res
 
     def scrape_status(review):
-        try:
-            res = author.text.split('-')[0]
-        except Exception:
-            logger.warning('Failed to scrape employee_status')
-            res = np.nan
-        return res
+        return author.text.split('-')[0].strip()
 
     def scrape_rev_title(review):
         return review.find_element_by_class_name('summary').text.strip('"')
@@ -296,7 +282,7 @@ def scrape(field, review, author):
     return fdict[field](review)
 
 
-def extract_from_page():
+def extract_from_page(cur_count):
 
     def is_featured(review):
         try:
@@ -321,7 +307,8 @@ def extract_from_page():
     reviews = browser.find_elements_by_class_name('empReview')
     logger.info(f'Found {len(reviews)} reviews on page {page[0]}')
 
-    for review in reviews:
+    end_ind = min(args.limit - cur_count,len(reviews))
+    for review in reviews[:end_ind]:
         if not is_featured(review):
             data = extract_review(review)
             logger.info(f'Scraped data for "{data["review_title"]}"\
@@ -466,23 +453,26 @@ def main():
         page[0] = get_current_page()
         logger.info(f'Starting from page {page[0]:,}.')
         time.sleep(1)
-
-    reviews_df = extract_from_page()
-    res = res.append(reviews_df)
-
-
-    while more_pages() and\
-            len(res) < args.limit and\
-            not date_limit_reached[0]:
-        go_to_next_page()
-        reviews_df = extract_from_page()
+    try:
+        reviews_df = extract_from_page(0)
         res = res.append(reviews_df)
 
-    logger.info(f'Writing {len(res)} reviews to file {args.file}')
-    res.to_csv(args.file, index=False, encoding='utf-8')
+        while more_pages() and\
+                len(res) < args.limit and\
+                not date_limit_reached[0]:
+            go_to_next_page()
+            reviews_df = extract_from_page(res.shape[0])
+            res = res.append(reviews_df)
 
-    end = time.time()
-    logger.info(f'Finished in {end - start} seconds')
+        logger.info(f'Writing {len(res)} reviews to file {args.file}')
+        res.to_csv(args.file, index=False, encoding='utf-8')
+    except:
+        logger.info('Error in scraping')
+    finally:
+        end = time.time()
+        logger.info(f'Finished in {end - start} seconds')
+        if args.headless:
+            browser.quit()
 
 
 if __name__ == '__main__':
