@@ -379,7 +379,7 @@ def get_browser():
     if args.headless:
         chrome_options.add_argument('--headless')
     chrome_options.add_argument('log-level=3')
-    browser = wd.Chrome(chrome_options=chrome_options)
+    browser = wd.Chrome(options=chrome_options)
     return browser
 
 
