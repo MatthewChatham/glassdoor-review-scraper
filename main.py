@@ -4,6 +4,11 @@ main.py
 Matthew Chatham
 June 6, 2018
 
+Modified by Sean Softcheck
+2019-16-04
+Defaults to Canadian domain
+Doesn't error when passing credentials on command line
+
 Given a company's landing page on Glassdoor and an output filename, scrape the
 following information about each employee review:
 
@@ -11,6 +16,9 @@ Review date
 Employee position
 Employee location
 Employee status (current/former)
+employee's outlook
+employee's view of CEO
+employee would recommend
 Review title
 Employee years at company
 Number of helpful votes
@@ -24,7 +32,6 @@ Overall rating
 import time
 import pandas as pd
 from argparse import ArgumentParser
-import argparse
 import logging
 import logging.config
 from selenium import webdriver as wd
@@ -34,13 +41,14 @@ from schema import SCHEMA
 import json
 import urllib
 import datetime as dt
+import re
 
 start = time.time()
 
-DEFAULT_URL = ('https://www.glassdoor.com/Overview/Working-at-'
-               'Premise-Data-Corporation-EI_IE952471.11,35.htm')
+DEFAULT_URL = ('https://www.glassdoor.ca/Reviews/Manulife-Reviews-E9373.htm')
 
 parser = ArgumentParser()
+parser.add_argument('--domain', help='Default country domain, "ca" or "com"',choices=['ca','com'],default='ca')
 parser.add_argument('-u', '--url',
                     help='URL of the company\'s Glassdoor landing page.',
                     default=DEFAULT_URL)
@@ -78,23 +86,23 @@ elif args.max_date and args.min_date:
         Both min_date and max_date specified.'
     )
 
-if args.credentials:
-    with open(args.credentials) as f:
-        d = json.loads(f.read())
-        args.username = d['username']
-        args.password = d['password']
-else:
-    try:
-        with open('secret.json') as f:
-            d = json.loads(f.read())
-            args.username = d['username']
-            args.password = d['password']
-    except FileNotFoundError:
-        msg = 'Please provide Glassdoor credentials.\
-        Credentials can be provided as a secret.json file in the working\
-        directory, or passed at the command line using the --username and\
-        --password flags.'
-        raise Exception(msg)
+if args.username is None or args.password is None:
+	if args.credentials:
+		with open(args.credentials) as f:
+			d = json.loads(f.read())
+			args.username = d['username']
+			args.password = d['password']
+		try:
+			with open('secret.json') as f:
+				d = json.loads(f.read())
+				args.username = d['username']
+				args.password = d['password']
+		except FileNotFoundError:
+			msg = 'Please provide Glassdoor credentials.\
+			Credentials can be provided as a secret.json file in the working\
+			directory, or passed at the command line using the --username and\
+			--password flags.'
+			raise Exception(msg)
 
 
 logger = logging.getLogger(__name__)
@@ -108,26 +116,36 @@ formatter = logging.Formatter(
 ch.setFormatter(formatter)
 
 logging.getLogger('selenium').setLevel(logging.CRITICAL)
-logging.getLogger('selenium').setLevel(logging.CRITICAL)
-
 
 def scrape(field, review, author):
 
     def scrape_date(review):
-        return review.find_element_by_tag_name(
-            'time').get_attribute('datetime')
+        return review.find_element_by_tag_name('time').get_attribute('datetime')
+			
+    def scrape_outlook(review):
+        res = review.find_element_by_xpath('//span[contains(text(),"Outlook")]')
+        res = re.search(r'(\w+) Outlook',res.text,re.IGNORECASE)
+        if res is not None:
+            return res.group(1)
+        else:
+            return ''
+        
+    def scrape_ceo(review):
+        res = review.find_element_by_xpath('//span[contains(text(),"CEO")]/span')
+        res = res.get_attribute('textContent')
+        res = re.search(r'^(\w+) of',res, re.IGNORECASE)
+        if res is not None:
+            return res.group(1)
+        else:
+            return ''
+        
+    def scrape_recommend(review):
+        res = review.find_element_by_xpath('//span[contains(text(),"Recommend")]')
+        return res.text
 
     def scrape_emp_title(review):
-        if 'Anonymous Employee' not in review.text:
-            try:
-                res = author.find_element_by_class_name(
-                    'authorJobTitle').text.split('-')[1]
-            except Exception:
-                logger.warning('Failed to scrape employee_title')
-                res = np.nan
-        else:
-            res = np.nan
-        return res
+        return author.find_element_by_class_name(
+                    'authorJobTitle').text.split('-')[1].strip()
 
     def scrape_location(review):
         if 'in' in review.text:
@@ -141,19 +159,14 @@ def scrape(field, review, author):
         return res
 
     def scrape_status(review):
-        try:
-            res = author.text.split('-')[0]
-        except Exception:
-            logger.warning('Failed to scrape employee_status')
-            res = np.nan
-        return res
+        return author.text.split('-')[0].strip()
 
     def scrape_rev_title(review):
         return review.find_element_by_class_name('summary').text.strip('"')
 
     def scrape_years(review):
         first_par = review.find_element_by_class_name(
-            'reviewBodyCell').find_element_by_tag_name('p')
+            'reviewBodyCell').find_element_by_class_name('mainText')
         if '(' in first_par.text:
             res = first_par.text[first_par.text.find('(') + 1:-1]
         else:
@@ -162,8 +175,10 @@ def scrape(field, review, author):
 
     def scrape_helpful(review):
         try:
-            helpful = review.find_element_by_class_name('helpfulCount')
-            res = helpful[helpful.find('(') + 1: -1]
+            helpful = review.find_element_by_class_name(
+                    'voteHelpful').find_element_by_class_name(
+                            'count').find_element_by_tag_name('span')
+            res = helpful.text
         except Exception:
             res = 0
         return res
@@ -245,6 +260,9 @@ def scrape(field, review, author):
         scrape_emp_title,
         scrape_location,
         scrape_status,
+		scrape_outlook,
+        scrape_recommend,
+        scrape_ceo,
         scrape_rev_title,
         scrape_years,
         scrape_helpful,
@@ -264,7 +282,7 @@ def scrape(field, review, author):
     return fdict[field](review)
 
 
-def extract_from_page():
+def extract_from_page(cur_count):
 
     def is_featured(review):
         try:
@@ -276,7 +294,6 @@ def extract_from_page():
     def extract_review(review):
         author = review.find_element_by_class_name('authorInfo')
         res = {}
-        # import pdb;pdb.set_trace()
         for field in SCHEMA:
             res[field] = scrape(field, review, author)
 
@@ -290,7 +307,8 @@ def extract_from_page():
     reviews = browser.find_elements_by_class_name('empReview')
     logger.info(f'Found {len(reviews)} reviews on page {page[0]}')
 
-    for review in reviews:
+    end_ind = min(args.limit - cur_count,len(reviews))
+    for review in reviews[:end_ind]:
         if not is_featured(review):
             data = extract_review(review)
             logger.info(f'Scraped data for "{data["review_title"]}"\
@@ -357,10 +375,8 @@ def navigate_to_reviews():
 def sign_in():
     logger.info(f'Signing in to {args.username}')
 
-    url = 'https://www.glassdoor.com/profile/login_input.htm'
+    url = 'https://www.glassdoor.{domain}/profile/login_input.htm'.format(domain=args.domain)
     browser.get(url)
-
-    # import pdb;pdb.set_trace()
 
     email_field = browser.find_element_by_name('username')
     password_field = browser.find_element_by_name('password')
@@ -437,24 +453,26 @@ def main():
         page[0] = get_current_page()
         logger.info(f'Starting from page {page[0]:,}.')
         time.sleep(1)
-
-    reviews_df = extract_from_page()
-    res = res.append(reviews_df)
-
-    # import pdb;pdb.set_trace()
-
-    while more_pages() and\
-            len(res) < args.limit and\
-            not date_limit_reached[0]:
-        go_to_next_page()
-        reviews_df = extract_from_page()
+    try:
+        reviews_df = extract_from_page(0)
         res = res.append(reviews_df)
 
-    logger.info(f'Writing {len(res)} reviews to file {args.file}')
-    res.to_csv(args.file, index=False, encoding='utf-8')
+        while more_pages() and\
+                len(res) < args.limit and\
+                not date_limit_reached[0]:
+            go_to_next_page()
+            reviews_df = extract_from_page(res.shape[0])
+            res = res.append(reviews_df)
 
-    end = time.time()
-    logger.info(f'Finished in {end - start} seconds')
+        logger.info(f'Writing {len(res)} reviews to file {args.file}')
+        res.to_csv(args.file, index=False, encoding='utf-8')
+    except:
+        logger.info('Error in scraping')
+    finally:
+        end = time.time()
+        logger.info(f'Finished in {end - start} seconds')
+        if args.headless:
+            browser.quit()
 
 
 if __name__ == '__main__':

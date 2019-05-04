@@ -4,6 +4,8 @@ Have you ever wanted to scrape reviews from Glassdoor, but bemoaned the site's l
 
 It takes about 1.5 seconds per review to scrape. So it will take about 25 minutes to scrape 1,000 reviews, or a little over 4 hours to scrape 10,000 reviews. This script requires patience. 😁
 
+**This Fork defaults to Canadian (.ca) domain, you can change the domain with a new argument**
+
 # Installation
 1. Clone or download this repository.
 2. Run `pip install -r requirements.txt` inside this repo. Consider doing this inside of a Python virtual environment.
@@ -20,6 +22,7 @@ optional arguments:
   -h, --help                                  show this help message and exit
   -u URL, --url URL                           URL of the company's Glassdoor landing page.
   -f FILE, --file FILE                        Output file.
+  --domain			                          Default country domain, "ca" or "com"
   --headless                                  Run Chrome in headless mode.
   --username USERNAME                         Email address used to sign in to GD.
   -p PASSWORD, --password PASSWORD            Password to sign in to GD.
@@ -39,9 +42,9 @@ optional arguments:
 Run the script as follows, taking Wells Fargo as an example. You can pass `--headless` to prevent the Chrome window from being visible, and the `--limit` option will limit how many reviews get scraped. The`-f` option specifies the output file, which defaults to `glassdoor_reviews.csv`.  
 
 ### Example 1
-Suppose you want to get the top 1,000 most popular reviews for Wells Fargo. Run the command as follows:
+Suppose you want to get the top 1,000 most popular reviews for Rogers. Run the command as follows:
 
-`python main.py --headless --url "https://www.glassdoor.com/Overview/Working-at-Wells-Fargo-EI_IE8876.11,22.htm" --limit 1000 -f wells_fargo_reviews.csv`
+`python main.py --headless --url "https://www.glassdoor.ca/Overview/Working-at-Rogers-Communications-EI_IE3783.11,32.htm" --limit 1000 -f rogers_reviews.csv`
 
 **Note**: To be safe, always surround the URL with quotes. This only matters in the presence of a query string.
 
@@ -53,6 +56,6 @@ Suppose you want to scrape all reviews from McDonald's that were posted in 2010:
 1. Navigate to McDonald's Glassdoor page and sort reviews ascending by date.
 2. Find the first page with a review from 2010, which happens to be [page 13](https://www.glassdoor.com/Reviews/McDonald-s-Reviews-E432_P13.htm?sort.sortType=RD&sort.ascending=true).
 3. Send the command to the script:
-`python main.py --headless --start_from_url --limit 9999 --max_date 2010-12-31 --url "https://www.glassdoor.com/Reviews/McDonald-s-Reviews-E432_P13.htm?sort.sortType=RD&sort.ascending=true"`
+`python main.py --headless --start_from_url --limit 9999 --max_date 2010-12-31 --url "https://www.glassdoor.ca/Reviews/McDonald-s-Reviews-E432_P13.htm?sort.sortType=RD&sort.ascending=true"`
 
 If there's demand for it, we can automate this process to provide a simple interface for filtering by date.
