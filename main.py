@@ -392,7 +392,6 @@ def sign_in():
 def get_browser():
     logger.info('Configuring browser')
     chrome_options = wd.ChromeOptions()
-    chrome_options.binary_location='/mnt/c/Program Files (x86)/Google/Chrome/Application/chrome.exe'
     if args.headless:
         chrome_options.add_argument('--headless')
     chrome_options.add_argument('log-level=3')
