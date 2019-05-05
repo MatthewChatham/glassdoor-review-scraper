@@ -373,7 +373,7 @@ def navigate_to_reviews():
 
 
 def sign_in():
-    logger.info(f'Signing in to {args.username}')
+    logger.info(f'Signing in with {args.username}')
 
     url = 'https://www.glassdoor.{domain}/profile/login_input.htm'.format(domain=args.domain)
     browser.get(url)
@@ -392,10 +392,11 @@ def sign_in():
 def get_browser():
     logger.info('Configuring browser')
     chrome_options = wd.ChromeOptions()
+    chrome_options.binary_location='/mnt/c/Program Files (x86)/Google/Chrome/Application/chrome.exe'
     if args.headless:
         chrome_options.add_argument('--headless')
     chrome_options.add_argument('log-level=3')
-    browser = wd.Chrome(chrome_options=chrome_options)
+    browser = wd.Chrome(options=chrome_options)
     return browser
 
 
