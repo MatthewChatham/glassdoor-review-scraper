@@ -7,6 +7,8 @@ Have you ever wanted to scrape reviews from Glassdoor, but bemoaned the site's l
 It takes about 1.5 seconds per review to scrape. So it will take about 25 minutes to scrape 1,000 reviews, or a little over 4 hours to scrape 10,000 reviews. This script requires patience. 😁
 
 # Installation
+First, make sure that you're using Python 3.
+
 1. Clone or download this repository.
 2. Run `pip install -r requirements.txt` inside this repo. Consider doing this inside of a Python virtual environment.
 3. Install [Chromedriver](http://chromedriver.chromium.org/) in the working directory.
