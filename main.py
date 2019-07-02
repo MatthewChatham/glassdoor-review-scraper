@@ -131,7 +131,7 @@ def scrape(field, review, author):
             return ''
         
     def scrape_ceo(review):
-        res = review.find_element_by_xpath('//span[contains(text(),"CEO")]/span')
+        res = review.find_element_by_xpath('//span[contains(text(),"CEO")]')
         res = res.get_attribute('textContent')
         res = re.search(r'^(\w+) of',res, re.IGNORECASE)
         if res is not None:
@@ -165,13 +165,12 @@ def scrape(field, review, author):
         return review.find_element_by_class_name('summary').text.strip('"')
 
     def scrape_years(review):
-        first_par = review.find_element_by_class_name(
-            'reviewBodyCell').find_element_by_class_name('mainText')
-        if '(' in first_par.text:
-            res = first_par.text[first_par.text.find('(') + 1:-1]
+        first_par = review.find_element_by_xpath('//p[contains(@class, "mainText")]').text
+        longevity = re.search(r'((more|less) than.+$)',first_par, re.IGNORECASE)
+        if longevity is not None:
+            return longevity.group(0)
         else:
-            res = np.nan
-        return res
+            return None
 
     def scrape_helpful(review):
         try:
@@ -185,35 +184,34 @@ def scrape(field, review, author):
 
     def expand_show_more(section):
         try:
-            more_content = section.find_element_by_class_name('moreContent')
-            more_link = more_content.find_element_by_class_name('moreLink')
+            more_link = section.find_element_by_xpath('//span[@class="link" and text()="Show More"]')
             more_link.click()
         except Exception:
             pass
 
     def scrape_pros(review):
         try:
-            pros = review.find_element_by_class_name('pros')
+            pros = review.find_element_by_xpath('.//p[@class="strong" and text()="Pros"]/..')
             expand_show_more(pros)
-            res = pros.text.replace('\nShow Less', '')
+            res = pros.find_element_by_xpath('.//p[2]').text
         except Exception:
             res = np.nan
         return res
 
     def scrape_cons(review):
         try:
-            cons = review.find_element_by_class_name('cons')
+            cons = review.find_element_by_xpath('.//p[@class="strong" and text()="Cons"]/..')
             expand_show_more(cons)
-            res = cons.text.replace('\nShow Less', '')
+            res = cons.find_element_by_xpath('.//p[2]').text
         except Exception:
             res = np.nan
         return res
 
     def scrape_advice(review):
         try:
-            advice = review.find_element_by_class_name('adviceMgmt')
+            advice = review.find_element_by_xpath('.//p[@class="strong" and text()="Advice to Management"]/..')
             expand_show_more(advice)
-            res = advice.text.replace('\nShow Less', '')
+            res = advice.find_element_by_xpath('.//p[2]').text
         except Exception:
             res = np.nan
         return res
@@ -329,8 +327,8 @@ def extract_from_page(cur_count):
 
 
 def more_pages():
-    paging_control = browser.find_element_by_class_name('pagingControls')
-    next_ = paging_control.find_element_by_class_name('next')
+    paging_control = browser.find_element_by_xpath('//ul[contains(@class,"pagination")]')
+    next_ = paging_control.find_element_by_xpath('//li[contains(@class,"next")]')
     try:
         next_.find_element_by_tag_name('a')
         return True
@@ -340,9 +338,8 @@ def more_pages():
 
 def go_to_next_page():
     logger.info(f'Going to page {page[0] + 1}')
-    paging_control = browser.find_element_by_class_name('pagingControls')
-    next_ = paging_control.find_element_by_class_name(
-        'next').find_element_by_tag_name('a')
+    paging_control = browser.find_element_by_xpath('//ul[contains(@class,"pagination")]')
+    next_ = paging_control.find_element_by_xpath('//li[contains(@class,"next")]').find_element_by_tag_name('a')
     browser.get(next_.get_attribute('href'))
     time.sleep(1)
     page[0] = page[0] + 1
@@ -454,15 +451,20 @@ def main():
         logger.info(f'Starting from page {page[0]:,}.')
         time.sleep(1)
     try:
+        # clear filter
+        browser.find_element_by_link_text('Clear All').click()
         reviews_df = extract_from_page(0)
+
         res = res.append(reviews_df)
 
         while more_pages() and\
                 len(res) < args.limit and\
-                not date_limit_reached[0]:
+                not date_limit_reached[0] and\
+                reviews_df.shape[0] > 0:
             go_to_next_page()
             reviews_df = extract_from_page(res.shape[0])
-            res = res.append(reviews_df)
+            if reviews_df.shape[0] > 0:
+                res = res.append(reviews_df)
 
         logger.info(f'Writing {len(res)} reviews to file {args.file}')
         res.to_csv(args.file, index=False, encoding='utf-8')
