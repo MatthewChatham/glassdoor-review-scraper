@@ -1,0 +1,17 @@
+This document contains the explanation of all the changes that have
+fixed the following bugs : 
+
+
+1)Incapability of scraping pros : Because of the change in the DOM file, I have changed the selector path in the scrape_pros function to access the right element and obtain the correct pros path
+
+2)Incapability of scraping cons : Because of the change in the DOM file, I have changed the selector path in the scrape_cons function to access the right element and obtain the correct pros path
+
+3)Incapability of scraping advice_mgmt : Because of the change in the DOM file, I have changed the selector path in the function to access the right element and obtain the correct advice_mgmt path
+
+4)Navigating to next page : 'pagingControls' wasn't a valid element identifier in the previous DOM. Have fixed it by adding the right path for the next button
+
+Ongoing issue : 
+The exact number of reviews aren't scraped but in multiples of 10. (assuming each page has 10 reviews). The argument is passed in the commandline itself and the script runs for (args.limit//10) times, thus accessing these number of pages only.
+
+
+I have attached a sample data file that i got after running the new script
