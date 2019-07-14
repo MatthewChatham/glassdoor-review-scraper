@@ -1,4 +1,12 @@
 '''
+<<<<<<< HEAD
+=======
+main.py
+----------
+Matthew Chatham
+June 6, 2018
+
+>>>>>>> 7a5082d8ae61d93721d9ec8deb4ddda3d21cfb47
 Given a company's landing page on Glassdoor and an output filename, scrape the
 following information about each employee review:
 
@@ -147,6 +155,7 @@ def scrape(field, review, author):
         return review.find_element_by_class_name('summary').text.strip('"')
 
     def scrape_years(review):
+<<<<<<< HEAD
         try:
             first_par = review.find_element_by_class_name(
                 'reviewBodyCell').find_element_by_tag_name('p')
@@ -155,13 +164,24 @@ def scrape(field, review, author):
             else:
                 res = np.nan
         except Exception:
+=======
+        first_par = review.find_element_by_class_name(
+            'reviewBodyCell').find_element_by_tag_name('p')
+        if '(' in first_par.text:
+            res = first_par.text[first_par.text.find('(') + 1:-1]
+        else:
+>>>>>>> 7a5082d8ae61d93721d9ec8deb4ddda3d21cfb47
             res = np.nan
         return res
 
     def scrape_helpful(review):
         try:
+<<<<<<< HEAD
             #helpful = review.find_element_by_class_name('count')
             helpful = review.find_element_by_class_name('voteHelpful').find_element_by_class_name('count').find_element_by_tag_name('span')
+=======
+            helpful = review.find_element_by_class_name('helpfulCount')
+>>>>>>> 7a5082d8ae61d93721d9ec8deb4ddda3d21cfb47
             res = helpful[helpful.find('(') + 1: -1]
         except Exception:
             res = 0
@@ -176,6 +196,7 @@ def scrape(field, review, author):
             pass
 
     def scrape_pros(review):
+<<<<<<< HEAD
         #try:
         return review.find_elements_by_class_name('mt-md')[0].find_elements_by_tag_name('p')[1].text
             #expand_show_more(pros)
@@ -200,6 +221,33 @@ def scrape(field, review, author):
         except Exception:
             return np.nan
 
+=======
+        try:
+            pros = review.find_element_by_class_name('pros')
+            expand_show_more(pros)
+            res = pros.text.replace('\nShow Less', '')
+        except Exception:
+            res = np.nan
+        return res
+
+    def scrape_cons(review):
+        try:
+            cons = review.find_element_by_class_name('cons')
+            expand_show_more(cons)
+            res = cons.text.replace('\nShow Less', '')
+        except Exception:
+            res = np.nan
+        return res
+
+    def scrape_advice(review):
+        try:
+            advice = review.find_element_by_class_name('adviceMgmt')
+            expand_show_more(advice)
+            res = advice.text.replace('\nShow Less', '')
+        except Exception:
+            res = np.nan
+        return res
+>>>>>>> 7a5082d8ae61d93721d9ec8deb4ddda3d21cfb47
 
     def scrape_overall_rating(review):
         try:
@@ -320,8 +368,14 @@ def more_pages():
 
 def go_to_next_page():
     logger.info(f'Going to page {page[0] + 1}')
+<<<<<<< HEAD
     paging_control = browser.find_element_by_class_name('pagination__PaginationStyle__next')
     next_ = paging_control.find_element_by_class_name('pagination__ArrowStyle__nextArrow  ')
+=======
+    paging_control = browser.find_element_by_class_name('pagingControls')
+    next_ = paging_control.find_element_by_class_name(
+        'next').find_element_by_tag_name('a')
+>>>>>>> 7a5082d8ae61d93721d9ec8deb4ddda3d21cfb47
     browser.get(next_.get_attribute('href'))
     time.sleep(1)
     page[0] = page[0] + 1
@@ -412,7 +466,11 @@ date_limit_reached = [False]
 
 
 def main():
+<<<<<<< HEAD
     count=0
+=======
+
+>>>>>>> 7a5082d8ae61d93721d9ec8deb4ddda3d21cfb47
     logger.info(f'Scraping up to {args.limit} reviews.')
 
     res = pd.DataFrame([], columns=SCHEMA)
@@ -440,11 +498,20 @@ def main():
 
     # import pdb;pdb.set_trace()
 
+<<<<<<< HEAD
     while(count<(args.limit//10)):
         go_to_next_page()
         reviews_df = extract_from_page()
         res = res.append(reviews_df)
         count+=1
+=======
+    while more_pages() and\
+            len(res) < args.limit and\
+            not date_limit_reached[0]:
+        go_to_next_page()
+        reviews_df = extract_from_page()
+        res = res.append(reviews_df)
+>>>>>>> 7a5082d8ae61d93721d9ec8deb4ddda3d21cfb47
 
     logger.info(f'Writing {len(res)} reviews to file {args.file}')
     res.to_csv(args.file, index=False, encoding='utf-8')
