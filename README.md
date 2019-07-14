@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-﻿# Introduction
-This script will go through pages and pages of reviews and scrape review data into a tidy CSV file. Pass it a company page and set a limit to scrape the 25 most conveniently available reviews, or control options like the number of reviews to scrape and the max/min review publication date.
-
-It takes about 1.5 seconds per review to scrape. So it will take about 25 minutes to scrape 1,000 reviews, or a little over 4 hours to scrape 10,000 reviews.
-=======
 # Citation
 I'd love to see how folks use this scraper! Please cite this repository in your publication and drop me a message. 😊
 
@@ -11,7 +5,6 @@ I'd love to see how folks use this scraper! Please cite this repository in your 
 Have you ever wanted to scrape reviews from Glassdoor, but bemoaned the site's lack of a public API for reviews? Worry no more! This script will go through pages and pages of reviews and scrape review data into a tidy CSV file. Pass it a company page and set a limit to scrape the 25 most conveniently available reviews, or control options like the number of reviews to scrape and the max/min review publication date.
 
 It takes about 1.5 seconds per review to scrape. So it will take about 25 minutes to scrape 1,000 reviews, or a little over 4 hours to scrape 10,000 reviews. This script requires patience. 😁
->>>>>>> 7a5082d8ae61d93721d9ec8deb4ddda3d21cfb47
 
 # Installation
 First, make sure that you're using Python 3.
@@ -46,12 +39,9 @@ optional arguments:
                                               with --start_from_url. You also must have sorted
                                               Glassdoor reviews DESCENDING by date.
 ```
-<<<<<<< HEAD
-=======
 
 Run the script as follows, taking Wells Fargo as an example. You can pass `--headless` to prevent the Chrome window from being visible, and the `--limit` option will limit how many reviews get scraped. The`-f` option specifies the output file, which defaults to `glassdoor_reviews.csv`.  
 
->>>>>>> 7a5082d8ae61d93721d9ec8deb4ddda3d21cfb47
 ### Example 1
 Suppose you want to get the top 1,000 most popular reviews for Wells Fargo. Run the command as follows:
 
@@ -69,11 +59,4 @@ Suppose you want to scrape all reviews from McDonald's that were posted in 2010:
 3. Send the command to the script:
 `python main.py --headless --start_from_url --limit 9999 --max_date 2010-12-31 --url "https://www.glassdoor.com/Reviews/McDonald-s-Reviews-E432_P13.htm?sort.sortType=RD&sort.ascending=true"`
 
-<<<<<<< HEAD
-
-#Sample output : 
-To view the output of this script, kindly download the sample2.zip file and go through the output.
- 
-=======
 If there's demand for it, we can automate this process to provide a simple interface for filtering by date.
->>>>>>> 7a5082d8ae61d93721d9ec8deb4ddda3d21cfb47
