@@ -65,6 +65,11 @@ parser.add_argument(
     Only use this option with --start_from_url.\
     You also must have sorted Glassdoor reviews DESCENDING by date.',
     type=lambda s: dt.datetime.strptime(s, "%Y-%m-%d"))
+parser.add_argument('--job_function', help='Set the job function filter.')
+# United States - All Cities
+parser.add_argument('--location', help='Set the job location filter.')
+# Most Recent
+parser.add_argument('--filter_sort', help='Set the sort filter')
 args = parser.parse_args()
 
 if not args.start_from_url and (args.max_date or args.min_date):
@@ -152,53 +157,55 @@ def scrape(field, review, author):
         return review.find_element_by_class_name('summary').text.strip('"')
 
     def scrape_years(review):
-        first_par = review.find_element_by_class_name(
-            'reviewBodyCell').find_element_by_tag_name('p')
-        if '(' in first_par.text:
-            res = first_par.text[first_par.text.find('(') + 1:-1]
-        else:
-            res = np.nan
-        return res
+        return review.find_element_by_class_name('mainText').text.strip('"')
 
     def scrape_helpful(review):
         try:
-            helpful = review.find_element_by_class_name('helpfulCount')
-            res = helpful[helpful.find('(') + 1: -1]
+            s = review.find_element_by_class_name(
+                'helpfulReviews').text.strip('""')
+            res = s[s.find("(")+1:s.find(")")]
         except Exception:
-            res = 0
+            res = np.nan
         return res
-
-    def expand_show_more(section):
-        try:
-            more_content = section.find_element_by_class_name('moreContent')
-            more_link = more_content.find_element_by_class_name('moreLink')
-            more_link.click()
-        except Exception:
-            pass
 
     def scrape_pros(review):
         try:
-            pros = review.find_element_by_class_name('pros')
-            expand_show_more(pros)
-            res = pros.text.replace('\nShow Less', '')
+            expand = review.find_element_by_xpath(
+                ".//span[contains(text(),'Show More')]").click()
+        except Exception:
+            pass
+        try:
+            pros = review.find_element_by_xpath(
+                ".//div/p[contains(text(),'Pros')]/following-sibling::p")
+            res = pros.text.strip('-')
         except Exception:
             res = np.nan
         return res
 
     def scrape_cons(review):
         try:
-            cons = review.find_element_by_class_name('cons')
-            expand_show_more(cons)
-            res = cons.text.replace('\nShow Less', '')
+            expand = review.find_element_by_xpath(
+                ".//span[contains(text(),'Show More')]").click()
+        except Exception:
+            pass
+        try:
+            cons = review.find_element_by_xpath(
+                ".//div/div/p[contains(text(),'Cons')]/following-sibling::p")
+            res = cons.text.strip('-')
         except Exception:
             res = np.nan
         return res
 
     def scrape_advice(review):
         try:
-            advice = review.find_element_by_class_name('adviceMgmt')
-            expand_show_more(advice)
-            res = advice.text.replace('\nShow Less', '')
+            expand = review.find_element_by_xpath(
+                ".//span[contains(text(),'Show More')]").click()
+        except Exception:
+            pass
+        try:
+            advice = review.find_element_by_xpath(
+                ".//div/p[contains(text(),'Advice')]/following-sibling::p")
+            res = advice.text.strip('-')
         except Exception:
             res = np.nan
         return res
@@ -311,10 +318,9 @@ def extract_from_page():
 
 
 def more_pages():
-    paging_control = browser.find_element_by_class_name('pagingControls')
-    next_ = paging_control.find_element_by_class_name('next')
     try:
-        next_.find_element_by_tag_name('a')
+        browser.find_element_by_css_selector(
+            'a.pagination__ArrowStyle__nextArrow.pagination__ArrowStyle__disabled')
         return True
     except selenium.common.exceptions.NoSuchElementException:
         return False
@@ -322,10 +328,10 @@ def more_pages():
 
 def go_to_next_page():
     logger.info(f'Going to page {page[0] + 1}')
-    paging_control = browser.find_element_by_class_name('pagingControls')
-    next_ = paging_control.find_element_by_class_name(
-        'next').find_element_by_tag_name('a')
-    browser.get(next_.get_attribute('href'))
+    next_ = browser.find_element_by_xpath(
+        ".//li[@class='pagination__PaginationStyle__next']/a")
+    next_.click()
+
     time.sleep(1)
     page[0] = page[0] + 1
 
@@ -373,9 +379,46 @@ def sign_in():
     time.sleep(1)
 
 
+def set_filter():
+    logger.info('Setting filter to information technology')
+
+    filter_btn = browser.find_element_by_xpath(
+        "//button[@data-test='filterToggleBtn']")
+    filter_btn.click()
+    time.sleep(1)
+
+    if args.job_function:
+        browser.find_element_by_xpath(
+            "//input[@data-test='jobFunctionFilterDropdown']").click()
+        time.sleep(1)
+
+        xpath = "//ul[@class='dropdown__theme__values common__DropdownTheme__values']/li[text()='job_function']".replace(
+            'job_function', args.job_function)
+        browser.find_element_by_xpath(xpath).click()
+        time.sleep(1)
+
+    if args.location:
+        browser.find_element_by_xpath(
+            "//input[@data-test='locationFilterDropdown']").click()
+        time.sleep(1)
+
+        xpath = "//ul[@class='dropdown__theme__values common__DropdownTheme__values']/li[text()='location']".replace(
+            'location', args.location)
+
+        browser.find_element_by_xpath(xpath).click()
+        time.sleep(1)
+
+    if args.filter_sort:
+        xpath = "//select[@name='filterSorts']/option[text()='filter_sort']".replace(
+            'filter_sort', args.filter_sort)
+        browser.find_element_by_xpath(xpath).click()
+    time.sleep(1)
+
+
 def get_browser():
     logger.info('Configuring browser')
     chrome_options = wd.ChromeOptions()
+    chrome_options.add_experimental_option('useAutomationExtension', False)
     if args.headless:
         chrome_options.add_argument('--headless')
     chrome_options.add_argument('log-level=3')
@@ -385,7 +428,7 @@ def get_browser():
 
 def get_current_page():
     logger.info('Getting current page number')
-    paging_control = browser.find_element_by_class_name('pagingControls')
+    paging_control = browser.find_element_by_class_name('current')
     current = int(paging_control.find_element_by_xpath(
         '//ul//li[contains\
         (concat(\' \',normalize-space(@class),\' \'),\' current \')]\
@@ -438,12 +481,14 @@ def main():
         logger.info(f'Starting from page {page[0]:,}.')
         time.sleep(1)
 
+    set_filter()
+
     reviews_df = extract_from_page()
     res = res.append(reviews_df)
 
     # import pdb;pdb.set_trace()
 
-    while more_pages() and\
+    while not more_pages() and\
             len(res) < args.limit and\
             not date_limit_reached[0]:
         go_to_next_page()
