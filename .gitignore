@@ -4,6 +4,4 @@ debug.log
 design.txt
 *.csv
 *.json
-*.pbix
-03-01-Project-Population-Start.zip
-03-01-Project-Population-Start/Source/codes-country-region.txt
+*.zip
