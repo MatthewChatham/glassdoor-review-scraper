@@ -152,53 +152,38 @@ def scrape(field, review, author):
         return review.find_element_by_class_name('summary').text.strip('"')
 
     def scrape_years(review):
-        first_par = review.find_element_by_class_name(
-            'reviewBodyCell').find_element_by_tag_name('p')
-        if '(' in first_par.text:
-            res = first_par.text[first_par.text.find('(') + 1:-1]
-        else:
+        try:
+            res = review.find_element_by_class_name('mainText').text.strip('"')
+        except Exception:
             res = np.nan
         return res
 
     def scrape_helpful(review):
         try:
-            helpful = review.find_element_by_class_name('helpfulCount')
-            res = helpful[helpful.find('(') + 1: -1]
+            x = review.find_element_by_class_name(
+                'helpfulReviews').text.strip('""')
+            res = x[x.find("(")+1:x.find(")")]
         except Exception:
             res = 0
         return res
 
-    def expand_show_more(section):
-        try:
-            more_content = section.find_element_by_class_name('moreContent')
-            more_link = more_content.find_element_by_class_name('moreLink')
-            more_link.click()
-        except Exception:
-            pass
-
     def scrape_pros(review):
         try:
-            pros = review.find_element_by_class_name('pros')
-            expand_show_more(pros)
-            res = pros.text.replace('\nShow Less', '')
+            res = review.find_elements_by_class_name('mt-md')[0].find_elements_by_tag_name('p')[1].text
         except Exception:
             res = np.nan
         return res
 
     def scrape_cons(review):
         try:
-            cons = review.find_element_by_class_name('cons')
-            expand_show_more(cons)
-            res = cons.text.replace('\nShow Less', '')
+            res = review.find_elements_by_class_name('mt-md')[1].find_elements_by_tag_name('p')[1].text
         except Exception:
             res = np.nan
         return res
 
     def scrape_advice(review):
         try:
-            advice = review.find_element_by_class_name('adviceMgmt')
-            expand_show_more(advice)
-            res = advice.text.replace('\nShow Less', '')
+            res = review.find_elements_by_class_name('mt-md')[2].find_elements_by_tag_name('p')[1].text
         except Exception:
             res = np.nan
         return res
@@ -311,9 +296,8 @@ def extract_from_page():
 
 
 def more_pages():
-    paging_control = browser.find_element_by_class_name('pagingControls')
-    next_ = paging_control.find_element_by_class_name('next')
-    try:
+    next_ = browser.find_element_by_class_name('pagination__PaginationStyle__next')
+    try:        
         next_.find_element_by_tag_name('a')
         return True
     except selenium.common.exceptions.NoSuchElementException:
@@ -322,9 +306,8 @@ def more_pages():
 
 def go_to_next_page():
     logger.info(f'Going to page {page[0] + 1}')
-    paging_control = browser.find_element_by_class_name('pagingControls')
-    next_ = paging_control.find_element_by_class_name(
-        'next').find_element_by_tag_name('a')
+    next_ = browser.find_element_by_class_name(
+        'pagination__PaginationStyle__next').find_element_by_tag_name('a')
     browser.get(next_.get_attribute('href'))
     time.sleep(1)
     page[0] = page[0] + 1
@@ -346,7 +329,7 @@ def navigate_to_reviews():
         return False
 
     reviews_cell = browser.find_element_by_xpath(
-        "//*[@id='EmpLinksWrapper']/div//a[2]")
+        "//*[@id='EIProductHeaders']/div/a[2]")
     reviews_path = reviews_cell.get_attribute('href')
     browser.get(reviews_path)
     time.sleep(1)
@@ -385,7 +368,7 @@ def get_browser():
 
 def get_current_page():
     logger.info('Getting current page number')
-    paging_control = browser.find_element_by_class_name('pagingControls')
+    paging_control = browser.find_element_by_class_name('pagination__PaginationStyle__page.pagination__PaginationStyle__current')
     current = int(paging_control.find_element_by_xpath(
         '//ul//li[contains\
         (concat(\' \',normalize-space(@class),\' \'),\' current \')]\
