@@ -373,7 +373,12 @@ def get_browser():
 def get_current_page():
     logger.info('Getting current page number')
     paging_control = browser.find_element_by_class_name('pagination__PaginationStyle__page.pagination__PaginationStyle__current')
-    current = paging_control.find_element_by_tag_name('a').text.strip('"')
+    current = int(paging_control.find_element_by_xpath(
+        '//ul//li[contains\
+        (concat(\' \',normalize-space(@class),\' \'),\' current \')]\
+        //span[contains(concat(\' \',\
+        normalize-space(@class),\' \'),\' disabled \')]')
+        .text.replace(',', ''))
     return current
 
 
