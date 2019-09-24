@@ -3,10 +3,8 @@ main.py
 ----------
 Matthew Chatham
 June 6, 2018
-
 Given a company's landing page on Glassdoor and an output filename, scrape the
 following information about each employee review:
-
 Review date
 Employee position
 Employee location
@@ -273,6 +271,11 @@ def extract_from_page():
     res = pd.DataFrame([], columns=SCHEMA)
 
     reviews = browser.find_elements_by_class_name('empReview')
+
+    if(len(reviews)== 0):
+        logger.info('No more Review!')
+        date_limit_reached[0] = True
+        
     logger.info(f'Found {len(reviews)} reviews on page {page[0]}')
 
     for review in reviews:
