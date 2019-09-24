@@ -160,8 +160,9 @@ def scrape(field, review, author):
 
     def scrape_helpful(review):
         try:
-            helpful = review.find_element_by_class_name('voteHelpful').find_element_by_class_name('count').find_element_by_tag_name('span')
-            res = helpful[helpful.find('(') + 1: -1]
+            x = review.find_element_by_class_name(
+                'helpfulReviews').text.strip('""')
+            res = x[x.find("(")+1:x.find(")")]
         except Exception:
             res = 0
         return res
