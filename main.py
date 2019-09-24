@@ -153,12 +153,7 @@ def scrape(field, review, author):
 
     def scrape_years(review):
         try:
-            first_par = review.find_element_by_class_name(
-                'reviewBodyCell').find_element_by_tag_name('p')
-            if '(' in first_par.text:
-                res = first_par.text[first_par.text.find('(') + 1:-1]
-            else:
-                res = np.nan
+            res = review.find_element_by_class_name('mainText').text.strip('"')
         except Exception:
             res = np.nan
         return res
