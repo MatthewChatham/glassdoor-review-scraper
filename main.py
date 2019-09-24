@@ -165,7 +165,7 @@ def scrape(field, review, author):
 
     def scrape_helpful(review):
         try:
-            helpful = review.find_element_by_class_name('helpfulCount')
+            helpful = review.find_element_by_class_name('voteHelpful').find_element_by_class_name('count').find_element_by_tag_name('span')
             res = helpful[helpful.find('(') + 1: -1]
         except Exception:
             res = 0
@@ -173,21 +173,21 @@ def scrape(field, review, author):
 
     def scrape_pros(review):
         try:
-            return review.find_element_by_class_name('Pros').text.strip('"')
+            res = review.find_elements_by_class_name('mt-md')[0].find_elements_by_tag_name('p')[1].text
         except Exception:
             res = np.nan
         return res
 
     def scrape_cons(review):
         try:
-            return review.find_element_by_class_name('Cons').text.strip('"')
+            res = review.find_elements_by_class_name('mt-md')[1].find_elements_by_tag_name('p')[1].text
         except Exception:
             res = np.nan
         return res
 
     def scrape_advice(review):
         try:
-            return review.find_element_by_class_name('Advice to Management').text.strip('"')
+            res = review.find_elements_by_class_name('mt-md')[2].find_elements_by_tag_name('p')[1].text
         except Exception:
             res = np.nan
         return res
@@ -372,13 +372,8 @@ def get_browser():
 
 def get_current_page():
     logger.info('Getting current page number')
-    paging_control = browser.find_element_by_class_name('pagingControls')
-    current = int(paging_control.find_element_by_xpath(
-        '//ul//li[contains\
-        (concat(\' \',normalize-space(@class),\' \'),\' current \')]\
-        //span[contains(concat(\' \',\
-        normalize-space(@class),\' \'),\' disabled \')]')
-        .text.replace(',', ''))
+    paging_control = browser.find_element_by_class_name('pagination__PaginationStyle__page.pagination__PaginationStyle__current')
+    current = paging_control.find_element_by_tag_name('a').text.strip('"')
     return current
 
 
