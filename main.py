@@ -331,8 +331,8 @@ def navigate_to_reviews():
         logger.info('No reviews to scrape. Bailing!')
         return False
 
-    reviews_cell = browser.find_element_by_xpath(
-        "//*[@id='EIProductHeaders']/div/a[2]")
+    reviews_cell = browser.find_element_by_css_selector(
+        "a.eiCell.cell.reviews")
     reviews_path = reviews_cell.get_attribute('href')
     browser.get(reviews_path)
     time.sleep(1)
