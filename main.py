@@ -152,12 +152,7 @@ def scrape(field, review, author):
         return review.find_element_by_class_name('summary').text.strip('"')
 
     def scrape_years(review):
-        first_par = review.find_element_by_class_name(
-            'reviewBodyCell').find_element_by_tag_name('p')
-        if '(' in first_par.text:
-            res = first_par.text[first_par.text.find('(') + 1:-1]
-        else:
-            res = np.nan
+        res = review.find_element_by_class_name('common__EiReviewTextStyles__allowLineBreaks').find_element_by_xpath('preceding-sibling::p').text
         return res
 
     def scrape_helpful(review):
@@ -170,35 +165,37 @@ def scrape(field, review, author):
 
     def expand_show_more(section):
         try:
-            more_content = section.find_element_by_class_name('moreContent')
-            more_link = more_content.find_element_by_class_name('moreLink')
+            # more_content = section.find_element_by_class_name('moreContent')
+            more_link = section.find_element_by_class_name('v2__EIReviewDetailsV2__continueReading')
             more_link.click()
         except Exception:
             pass
 
     def scrape_pros(review):
         try:
-            pros = review.find_element_by_class_name('pros')
+            pros = review.find_element_by_class_name('common__EiReviewTextStyles__allowLineBreaks')
             expand_show_more(pros)
-            res = pros.text.replace('\nShow Less', '')
+            res = pros.text.replace('Pros', '')
+            res = res.strip()
         except Exception:
             res = np.nan
         return res
 
     def scrape_cons(review):
         try:
-            cons = review.find_element_by_class_name('cons')
+            cons = review.find_elements_by_class_name('common__EiReviewTextStyles__allowLineBreaks')[1]
             expand_show_more(cons)
-            res = cons.text.replace('\nShow Less', '')
+            res = cons.text.replace('Cons', '')
+            res = res.strip()
         except Exception:
             res = np.nan
         return res
 
     def scrape_advice(review):
         try:
-            advice = review.find_element_by_class_name('adviceMgmt')
-            expand_show_more(advice)
-            res = advice.text.replace('\nShow Less', '')
+            advice = review.find_elements_by_class_name('common__EiReviewTextStyles__allowLineBreaks')[2]
+            res = advice.text.replace('Advice to Management', '')
+            res = res.strip()
         except Exception:
             res = np.nan
         return res
@@ -240,6 +237,41 @@ def scrape(field, review, author):
     def scrape_senior_management(review):
         return _scrape_subrating(4)
 
+
+    def scrape_recommends(review):
+        try:
+            res = review.find_element_by_class_name('recommends').text
+            res = res.split('\n')
+            return res[0]
+        except:
+            return np.nan
+    
+    def scrape_outlook(review):
+        try:
+            res = review.find_element_by_class_name('recommends').text
+            res = res.split('\n')
+            if len(res) == 2 or len(res) == 3:
+                if 'CEO' in res[1]:
+                    return np.nan
+                return res[1]
+            return np.nan
+        except:
+            return np.nan
+    
+    def scrape_approve_ceo(review):
+        try:
+            res = review.find_element_by_class_name('recommends').text
+            res = res.split('\n')
+            if len(res) == 3:
+                return res[2]
+            if len(res) == 2:
+                if 'CEO' in res[1]:
+                    return res[1]
+            return np.nan
+        except:
+            return np.nan
+
+
     funcs = [
         scrape_date,
         scrape_emp_title,
@@ -256,7 +288,11 @@ def scrape(field, review, author):
         scrape_culture_and_values,
         scrape_career_opportunities,
         scrape_comp_and_benefits,
-        scrape_senior_management
+        scrape_senior_management,
+        scrape_recommends,
+        scrape_outlook,
+        scrape_approve_ceo
+
     ]
 
     fdict = dict((s, f) for (s, f) in zip(SCHEMA, funcs))
@@ -311,9 +347,9 @@ def extract_from_page():
 
 
 def more_pages():
-    paging_control = browser.find_element_by_class_name('pagingControls')
-    next_ = paging_control.find_element_by_class_name('next')
     try:
+        # paging_control = browser.find_element_by_class_name('pagingControls')
+        next_ = browser.find_element_by_class_name('pagination__PaginationStyle__next')
         next_.find_element_by_tag_name('a')
         return True
     except selenium.common.exceptions.NoSuchElementException:
@@ -322,9 +358,9 @@ def more_pages():
 
 def go_to_next_page():
     logger.info(f'Going to page {page[0] + 1}')
-    paging_control = browser.find_element_by_class_name('pagingControls')
-    next_ = paging_control.find_element_by_class_name(
-        'next').find_element_by_tag_name('a')
+    # paging_control = browser.find_element_by_class_name('pagingControls')
+    next_ = browser.find_element_by_class_name(
+        'pagination__PaginationStyle__next').find_element_by_tag_name('a')
     browser.get(next_.get_attribute('href'))
     time.sleep(1)
     page[0] = page[0] + 1
@@ -346,11 +382,12 @@ def navigate_to_reviews():
         return False
 
     reviews_cell = browser.find_element_by_xpath(
-        "//*[@id='EmpLinksWrapper']/div//a[2]")
+        '//a[@data-label="Reviews"]')
     reviews_path = reviews_cell.get_attribute('href')
+    
+    # reviews_path = driver.current_url.replace('Overview','Reviews')
     browser.get(reviews_path)
     time.sleep(1)
-
     return True
 
 
@@ -370,7 +407,9 @@ def sign_in():
     password_field.send_keys(args.password)
     submit_btn.click()
 
-    time.sleep(1)
+    time.sleep(3)
+    browser.get(args.url)
+
 
 
 def get_browser():
