@@ -167,21 +167,24 @@ def scrape(field, review, author):
 
     def scrape_pros(review):
         try:
-            res = review.find_elements_by_class_name('mt-md')[0].find_elements_by_tag_name('p')[1].text
+            res = review.find_elements_by_class_name(
+                'v2__EIReviewDetailsV2__fullWidth')[0].find_elements_by_tag_name('p')[1].text
         except Exception:
             res = np.nan
         return res
 
     def scrape_cons(review):
         try:
-            res = review.find_elements_by_class_name('mt-md')[1].find_elements_by_tag_name('p')[1].text
+            res = review.find_elements_by_class_name(
+                'v2__EIReviewDetailsV2__fullWidth')[1].find_elements_by_tag_name('p')[1].text
         except Exception:
             res = np.nan
         return res
 
     def scrape_advice(review):
         try:
-            res = review.find_elements_by_class_name('mt-md')[2].find_elements_by_tag_name('p')[1].text
+            res = review.find_elements_by_class_name(
+                'v2__EIReviewDetailsV2__fullWidth')[2].find_elements_by_tag_name('p')[1].text
         except Exception:
             res = np.nan
         return res
@@ -275,7 +278,7 @@ def extract_from_page():
     if(len(reviews)== 0):
         logger.info('No more Review!')
         date_limit_reached[0] = True
-        
+
     logger.info(f'Found {len(reviews)} reviews on page {page[0]}')
 
     for review in reviews:
