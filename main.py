@@ -152,7 +152,7 @@ def scrape(field, review, author):
         return review.find_element_by_class_name('summary').text.strip('"')
 
     def scrape_years(review):
-        res = review.find_element_by_class_name('common__EiReviewTextStyles__allowLineBreaks').find_element_by_xpath('preceding-sibling::p').text
+        res = review.find_element_by_class_name('mainText').text.strip('"')
         return res
 
     def scrape_helpful(review):
