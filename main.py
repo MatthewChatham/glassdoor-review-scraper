@@ -173,7 +173,7 @@ def scrape(field, review, author):
 
     def scrape_pros(review):
         try:
-            pros = review.find_element_by_class_name('common__EiReviewTextStyles__allowLineBreaks')
+            pros = review.find_element_by_class_name('v2__EIReviewDetailsV2__fullWidth')
             expand_show_more(pros)
             res = pros.text.replace('Pros', '')
             res = res.strip()
@@ -183,7 +183,7 @@ def scrape(field, review, author):
 
     def scrape_cons(review):
         try:
-            cons = review.find_elements_by_class_name('common__EiReviewTextStyles__allowLineBreaks')[1]
+            cons = review.find_elements_by_class_name('v2__EIReviewDetailsV2__fullWidth')[1]
             expand_show_more(cons)
             res = cons.text.replace('Cons', '')
             res = res.strip()
@@ -193,7 +193,7 @@ def scrape(field, review, author):
 
     def scrape_advice(review):
         try:
-            advice = review.find_elements_by_class_name('common__EiReviewTextStyles__allowLineBreaks')[2]
+            advice = review.find_elements_by_class_name('v2__EIReviewDetailsV2__fullWidth')[2]
             res = advice.text.replace('Advice to Management', '')
             res = res.strip()
         except Exception:
@@ -483,7 +483,7 @@ def main():
     # import pdb;pdb.set_trace()
 
     while more_pages() and\
-            len(res) < args.limit and\
+            len(res) + 1 < args.limit and\
             not date_limit_reached[0]:
         go_to_next_page()
         reviews_df = extract_from_page()
