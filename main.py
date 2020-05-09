@@ -347,9 +347,9 @@ def extract_from_page():
 
 
 def more_pages():
-    next_ = browser.find_element_by_class_name('pagination__PaginationStyle__next')
     try:
         # paging_control = browser.find_element_by_class_name('pagingControls')
+        next_ = browser.find_element_by_class_name('pagination__PaginationStyle__next')
         next_.find_element_by_tag_name('a')
         return True
     except selenium.common.exceptions.NoSuchElementException:
