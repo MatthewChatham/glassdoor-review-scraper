@@ -157,7 +157,7 @@ def scrape(field, review, author):
 
     def scrape_helpful(review):
         try:
-            helpful = review.find_element_by_class_name('helpfulCount')
+            helpful = review.find_element_by_class_name('helpfulCount').text.replace('"','')
             res = helpful[helpful.find('(') + 1: -1]
         except Exception:
             res = 0
