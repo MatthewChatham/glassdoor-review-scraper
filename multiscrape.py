@@ -8,6 +8,7 @@ Given a tuple of items use main.py to scrape reviews from multiple companies on 
 Use 1 tuple per company.
 List of tuples to itterate over for each command execution is named pages
 each tuple in the list takes the format (url, limit, output_file_name)
+each Item in the tuple is a string, hence it will need to be enclosed in quotes.
 '''
 
 import os
