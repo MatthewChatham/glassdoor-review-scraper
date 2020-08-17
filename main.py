@@ -292,9 +292,9 @@ def extract_from_page():
         idx[0] = idx[0] + 1
 
     if args.max_date and \
-        (pd.to_datetime(res['date']).max() > args.max_date) or \
+        (pd.to_datetime(res['date'], errors='coerce', format='%m%d%Y').max() > args.max_date) or \
             args.min_date and \
-            (pd.to_datetime(res['date']).min() < args.min_date):
+            (pd.to_datetime(res['date'], errors='coerce', format='%m%d%Y').min() < args.min_date):
         logger.info('Date limit reached, ending process')
         date_limit_reached[0] = True
 
@@ -323,7 +323,7 @@ def no_reviews():
     return False
     # TODO: Find a company with no reviews to test on
 
-
+"""
 def navigate_to_reviews():
     logger.info('Navigating to company reviews')
 
@@ -334,14 +334,13 @@ def navigate_to_reviews():
         logger.info('No reviews to scrape. Bailing!')
         return False
 
-    reviews_cell = browser.find_element_by_css_selector(
-        "a.eiCell.cell.reviews")
+    reviews_cell = browser.find_element_by_class_name("eiCell.cell.reviews.active")
     reviews_path = reviews_cell.get_attribute('href')
     browser.get(reviews_path)
     time.sleep(1)
 
     return True
-
+"""
 
 def sign_in():
     logger.info(f'Signing in to {args.username}')
@@ -375,12 +374,15 @@ def get_browser():
 def get_current_page():
     logger.info('Getting current page number')
     paging_control = browser.find_element_by_class_name('pagination__PaginationStyle__page.pagination__PaginationStyle__current')
+    """
     current = int(paging_control.find_element_by_xpath(
         '//ul//li[contains\
         (concat(\' \',normalize-space(@class),\' \'),\' current \')]\
         //span[contains(concat(\' \',\
         normalize-space(@class),\' \'),\' disabled \')]')
         .text.replace(',', ''))
+    """
+    current = int(paging_control.find_element_by_tag_name('a').text)
     return current
 
 
@@ -410,12 +412,7 @@ def main():
     res = pd.DataFrame([], columns=SCHEMA)
 
     sign_in()
-
-    if not args.start_from_url:
-        reviews_exist = navigate_to_reviews()
-        if not reviews_exist:
-            return
-    elif args.max_date or args.min_date:
+    if args.max_date or args.min_date:
         verify_date_sorting()
         browser.get(args.url)
         page[0] = get_current_page()
@@ -444,6 +441,13 @@ def main():
 
     end = time.time()
     logger.info(f'Finished in {end - start} seconds')
+"""
+    if not args.start_from_url:
+        reviews_exist = navigate_to_reviews()
+        if not reviews_exist:
+            return
+"""
+
 
 
 if __name__ == '__main__':
