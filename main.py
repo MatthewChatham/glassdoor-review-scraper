@@ -85,17 +85,22 @@ if args.credentials:
         args.password = d['password']
 else:
     try:
-        with open('secret.json') as f:
-            d = json.loads(f.read())
-            args.username = d['username']
-            args.password = d['password']
-    except FileNotFoundError:
-        msg = 'Please provide Glassdoor credentials.\
-        Credentials can be provided as a secret.json file in the working\
-        directory, or passed at the command line using the --username and\
-        --password flags.'
-        raise Exception(msg)
-
+        if args.username:
+            print('Username passed through command line arguments.')
+        if args.password:
+            print('Password passed through command line arguments.')
+    except:
+        try:
+            with open('secret.json') as f:
+                d = json.loads(f.read())
+                args.username = d['username']
+                args.password = d['password']
+        except FileNotFoundError:
+            msg = 'Please provide Glassdoor credentials.\
+            Credentials can be provided as a secret.json file in the working\
+            directory, or passed at the command line using the --username and\
+            --password flags.'
+            raise Exception(msg)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
