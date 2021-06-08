@@ -114,17 +114,15 @@ logging.getLogger('selenium').setLevel(logging.CRITICAL)
 def scrape(field, review, author):
 
     def scrape_date(review):
-        date = review.find_element_by_tag_name(
-            'time').get_attribute('datetime')
-        time_index = date.find(':') - 3
-        res = date[:time_index]
+        jobtitle = author.find_element_by_class_name('authorJobTitle').text.strip('"')
+        res = dt.datetime.strptime(jobtitle.split('-')[0].strip(' '),'%b %d, %Y').date()
         return res
 
     def scrape_emp_title(review):
         if 'Anonymous Employee' not in review.text:
             try:
-                res = author.find_element_by_class_name(
-                    'authorJobTitle').text.split('-')[1]
+                jobtitle = review.find_element_by_class_name('authorJobTitle').text.strip('"')
+                res = jobtitle.split('-')[1].strip(' ')
             except Exception:
                 logger.warning('Failed to scrape employee_title')
                 res = "N/A"
@@ -146,69 +144,62 @@ def scrape(field, review, author):
 
     def scrape_status(review):
         try:
-            res = author.text.split('-')[0]
+            res = review.find_element_by_class_name('pt-xsm').text.strip('"')
         except Exception:
             logger.warning('Failed to scrape employee_status')
             res = "N/A"
         return res
 
     def scrape_rev_title(review):
-        return review.find_element_by_class_name('summary').text.strip('"')
+        return review.find_element_by_class_name('mb-xxsm').text.strip('"')
 
     def scrape_helpful(review):
         try:
-            helpful = review.find_element_by_class_name('helpfulCount')
-            res = helpful.text[helpful.text.find('(') + 1: -1]
+            helpful = review.find_element_by_class_name('common__EiReviewDetailsStyle__socialHelpfulcontainer').text
+            if 'people found this review helpful' in helpful:
+                res = int(helpful.split(' ')[0])
+            else:
+                res = 0
         except Exception:
             res = 0
         return res
 
-    def expand_show_more(section):
-        try:
-            more_link = section.find_element_by_class_name('v2__EIReviewDetailsV2__continueReading')
-            more_link.click()
-        except Exception:
-            pass
-
     def scrape_pros(review):
         try:
-            pros = review.find_element_by_class_name('gdReview')
-            expand_show_more(pros)
-            pro_index = pros.text.find('Pros')
-            con_index = pros.text.find('Cons')
-            res = pros.text[pro_index+5 : con_index]
+            comments = review.find_elements_by_class_name('v2__EIReviewDetailsV2__fullWidth')
+            res = np.nan
+            for r in comments:
+                if r.find_element_by_tag_name('p').text=='Pros':
+                    res = r.find_element_by_tag_name('span').text
         except Exception:
             res = np.nan
         return res
 
     def scrape_cons(review):
         try:
-            cons = review.find_element_by_class_name('gdReview')
-            expand_show_more(cons)
-            con_index = cons.text.find('Cons')
-            continue_index = cons.text.find('Continue reading')
-            res = cons.text[con_index+5 : continue_index]
+            comments = review.find_elements_by_class_name('v2__EIReviewDetailsV2__fullWidth')
+            res = np.nan
+            for r in comments:
+                if r.find_element_by_tag_name('p').text=='Cons':
+                    res = r.find_element_by_tag_name('span').text
         except Exception:
             res = np.nan
         return res
 
     def scrape_advice(review):
         try:
-            advice = review.find_element_by_class_name('gdReview')
-            expand_show_more(advice)
-            advice_index = advice.text.find('Advice to Management')
-            if advice_index != -1:
-                helpful_index = advice.text.rfind('Helpful (')
-                res = advice.text[advice_index+21 : helpful_index]
-            else:
-                res = np.nan
+            comments = review.find_elements_by_class_name('v2__EIReviewDetailsV2__fullWidth')
+            res = np.nan
+            for r in comments:
+                if r.find_element_by_tag_name('span').get_attribute('data-test')=='advice-management':
+                    res = r.find_element_by_tag_name('span').text
         except Exception:
             res = np.nan
         return res
 
     def scrape_overall_rating(review):
         try:
-            ratings = review.find_element_by_class_name('gdStars')
+            ratings = review.find_element_by_class_name('ratingNumber')
             res = float(ratings.text[:3])
         except Exception:
             res = np.nan
@@ -216,12 +207,10 @@ def scrape(field, review, author):
 
     def _scrape_subrating(i):
         try:
-            ratings = review.find_element_by_class_name('gdStars')
-            subratings = ratings.find_element_by_class_name(
-                'subRatings').find_element_by_tag_name('ul')
-            this_one = subratings.find_elements_by_tag_name('li')[i]
-            res = this_one.find_element_by_class_name(
-                'gdBars').get_attribute('title')
+            r = review.find_element_by_class_name('tooltipContainer').find_elements_by_tag_name('li')
+            srdiv = r[i].find_elements_by_tag_name('div')
+            srclass = srdiv[1].get_attribute('class')
+            res = v.index(srclass)+1
         except Exception:
             res = np.nan
         return res
@@ -241,40 +230,39 @@ def scrape(field, review, author):
     def scrape_senior_management(review):
         return _scrape_subrating(4)
 
+    def _scrape_checkmark(i):
+        try:
+            r = review.find_element_by_class_name('recommends').find_elements_by_class_name('SVGInline-svg')
+            att = r[i].get_attribute('class')
+            if att=='SVGInline-svg css-hcqxoa-svg d-flex-svg':
+                res = 'mark'
+            elif att=='SVGInline-svg css-1h93d4v-svg d-flex-svg':
+                res = 'line'
+            elif att=='SVGInline-svg css-1kiw93k-svg d-flex-svg':
+                res = 'cross'
+            elif att=='SVGInline-svg css-10xv9lv-svg d-flex-svg':
+                res = 'circle'
+            else:
+                res = np.nan
+        except Exception:
+            res = np.nan 
+        return res
 
     def scrape_recommends(review):
-        try:
-            res = review.find_element_by_class_name('recommends').text
-            res = res.split('\n')
-            return res[0]
-        except:
-            return np.nan
-    
-    def scrape_outlook(review):
-        try:
-            res = review.find_element_by_class_name('recommends').text
-            res = res.split('\n')
-            if len(res) == 2 or len(res) == 3:
-                if 'CEO' in res[1]:
-                    return np.nan
-                return res[1]
-            return np.nan
-        except:
-            return np.nan
+        return _scrape_checkmark(0)
     
     def scrape_approve_ceo(review):
-        try:
-            res = review.find_element_by_class_name('recommends').text
-            res = res.split('\n')
-            if len(res) == 3:
-                return res[2]
-            if len(res) == 2:
-                if 'CEO' in res[1]:
-                    return res[1]
-            return np.nan
-        except:
-            return np.nan
+        return _scrape_checkmark(1)
+        
+    def scrape_outlook(review):
+        return _scrape_checkmark(2)
 
+    def scrape_featured(review):
+        try:
+            review.find_element_by_class_name('common__EiReviewDetailsStyle__newFeaturedReview')
+            return True
+        except selenium.common.exceptions.NoSuchElementException:
+            return False  
 
     funcs = [
         scrape_date,
@@ -294,9 +282,13 @@ def scrape(field, review, author):
         scrape_senior_management,
         scrape_recommends,
         scrape_outlook,
-        scrape_approve_ceo
+        scrape_approve_ceo,
+        scrape_featured
 
     ]
+
+    # mapping from subrating to integer value for 1,2,3,4,5 stars
+    v = ['css-152xdkl','css-19o85uz','css-1ihykkv','css-1c07csa','css-1dc0bv4']
 
     fdict = dict((s, f) for (s, f) in zip(SCHEMA, funcs))
 
@@ -305,12 +297,12 @@ def scrape(field, review, author):
 
 def extract_from_page():
 
-    def is_featured(review):
+    def expand_show_more(review):
         try:
-            review.find_element_by_class_name('featuredFlag')
-            return True
-        except selenium.common.exceptions.NoSuchElementException:
-            return False
+            continue_link = review.find_element_by_class_name('v2__EIReviewDetailsV2__newUiCta')
+            continue_link.click()
+        except Exception:
+            pass
 
     def extract_review(review):
         try:
@@ -342,16 +334,13 @@ def extract_from_page():
             valid_page[0] = False # make sure page is populated
 
     for review in reviews:
-        if not is_featured(review):
-            data = extract_review(review)
-            if data != None:
-                logger.info(f'Scraped data for "{data["review_title"]}"\
-    ({data["date"]})')
-                res.loc[idx[0]] = data
-            else:
-                logger.info('Discarding a blocked review')
+        expand_show_more(review)
+        data = extract_review(review)
+        if data != None:
+            logger.info(f'Scraped data for "{data["review_title"]}"')
+            res.loc[idx[0]] = data
         else:
-            logger.info('Discarding a featured review')
+            logger.info('Discarding a blocked review')
         idx[0] = idx[0] + 1
 
     if args.max_date and \
