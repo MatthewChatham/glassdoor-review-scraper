@@ -1,7 +1,8 @@
 """
 main.py
 ----------
-updated Dec 2, 2021
+Matthew Chatham, Hamid Vakilzadeh
+updated Aug 12, 2022
 
 Given a company's landing page on glassdoor and an output filename, scrape the
 following information about each employee review:
@@ -287,7 +288,7 @@ def extract_from_page():
     def extract_review(review):
         try:
             author = review.find_element(By.CLASS_NAME, 'authorInfo')
-        except:
+        except NoSuchElementException:
             return None  # Account for reviews that have been blocked
         res = {}
         # import pdb;pdb.set_trace()
@@ -474,7 +475,7 @@ def main():
         try:
             reviews_df = extract_from_page()
             res = res.append(reviews_df)
-        except:
+        except NoSuchElementException:
             break
 
     logger.info(f'Writing {len(res)} reviews to file {args.file}')
