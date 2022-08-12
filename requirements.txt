@@ -1,2 +1,2 @@
 pandas
-selenium
+selenium===4.4.0

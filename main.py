@@ -32,8 +32,9 @@ import numpy as np
 import pandas as pd
 from selenium import webdriver as wd
 from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.by import By
 from selenium.webdriver import ActionChains
-
+from selenium.webdriver.chrome.service import Service as ChromeService
 from schema import SCHEMA
 
 start = time.time()
@@ -42,7 +43,8 @@ DEFAULT_URL = ('https://www.glassdoor.com/Overview/Working-at-'
                'Premise-Data-Corporation-EI_IE952471.11,35.htm')
 
 # Download chromedriver from : https://chromedriver.chromium.org/downloads
-chrome_driver_path = 'chromedriver'
+chrome_driver_path = '/Users/hamid/Documents/GitHub/glassdoor-review-scraper/chromedriver'
+chromium_location = 'Chromium.app/Contents/MacOS/Chromium'
 Path("Outputs").mkdir(parents=True, exist_ok=True)
 
 parser = ArgumentParser()
@@ -116,16 +118,16 @@ logging.getLogger('selenium').setLevel(logging.CRITICAL)
 
 def scrape(field, review, author):
     def scrape_date(review):
-        date = review.find_element_by_class_name(
-            'authorJobTitle').text.split('-')[0]
+        date = review.find_element(By.CLASS_NAME,
+                                   'authorJobTitle').text.split('-')[0]
         res = date
         return res
 
     def scrape_emp_title(review):
         if 'Anonymous Employee' not in review.text:
             try:
-                res = author.find_element_by_class_name(
-                    'authorJobTitle').text.split('-')[1]
+                res = author.find_element(By.CLASS_NAME,
+                                          'authorJobTitle').text.split('-')[1]
             except Exception:
                 logger.warning('Failed to scrape employee_title')
                 res = "N/A"
@@ -136,8 +138,8 @@ def scrape(field, review, author):
     def scrape_location(review):
         if 'in' in review.text:
             try:
-                res = author.find_element_by_class_name(
-                    'authorLocation').text
+                res = author.find_element(By.CLASS_NAME,
+                                          'authorLocation').text
             except Exception:
                 logger.warning('Failed to scrape employee_location')
                 res = np.nan
@@ -147,7 +149,7 @@ def scrape(field, review, author):
 
     def scrape_status(review):
         try:
-            status_box = review.find_element_by_class_name('pt-xsm')
+            status_box = review.find_element(By.CLASS_NAME, 'pt-xsm')
             res = status_box.text
         except Exception:
             logger.warning('Failed to scrape employee_status')
@@ -155,12 +157,12 @@ def scrape(field, review, author):
         return res
 
     def scrape_rev_title(review):
-        return review.find_element_by_class_name('reviewLink').text.strip('"')
+        return review.find_element(By.CLASS_NAME, 'reviewLink').text.strip('"')
 
     def scrape_helpful(review):
-        helpful_votes = review.find_element_by_class_name('gdReview')
-        helpful_votes = helpful_votes.find_element_by_class_name(
-            "common__EiReviewDetailsStyle__socialHelpfulcontainer")
+        helpful_votes = review.find_element(By.CLASS_NAME, 'gdReview')
+        helpful_votes = helpful_votes.find_element(By.CLASS_NAME,
+                                                   "common__EiReviewDetailsStyle__socialHelpfulcontainer")
         res = re.sub('[^0-9]', '', helpful_votes.text)
         if len(res) != 0:
             return int(res)
@@ -169,16 +171,16 @@ def scrape(field, review, author):
 
     def expand_show_more(section):
         try:
-            more_link = section.find_element_by_class_name('v2__EIReviewDetailsV2__continueReading')
+            more_link = section.find_element(By.CLASS_NAME, 'v2__EIReviewDetailsV2__continueReading')
             more_link.click()
         except Exception:
             pass
 
     def scrape_pros(review):
         try:
-            pros = review.find_element_by_class_name('gdReview')
+            pros = review.find_element(By.CLASS_NAME, 'gdReview')
             expand_show_more(pros)
-            pros = pros.find_element_by_css_selector("*[data-test='pros']")
+            pros = pros.find_element(By.CSS_SELECTOR, "*[data-test='pros']")
             res = pros.text
         except Exception:
             res = np.nan
@@ -186,9 +188,9 @@ def scrape(field, review, author):
 
     def scrape_cons(review):
         try:
-            cons = review.find_element_by_class_name('gdReview')
+            cons = review.find_element(By.CLASS_NAME, 'gdReview')
             expand_show_more(cons)
-            cons = cons.find_element_by_css_selector("*[data-test='cons']")
+            cons = cons.find_element(By.CSS_SELECTOR, "*[data-test='cons']")
             res = cons.text
         except Exception:
             res = np.nan
@@ -196,9 +198,9 @@ def scrape(field, review, author):
 
     def scrape_advice(review):
         try:
-            advice = review.find_element_by_class_name('gdReview')
+            advice = review.find_element(By.CLASS_NAME, 'gdReview')
             expand_show_more(advice)
-            advice = advice.find_element_by_css_selector("*[data-test='advice-management']")
+            advice = advice.find_element(By.CSS_SELECTOR, "*[data-test='advice-management']")
             res = advice.text
         except Exception:
             res = np.nan
@@ -206,7 +208,7 @@ def scrape(field, review, author):
 
     def scrape_overall_rating(review):
         try:
-            overall_rating = review.find_element_by_class_name("ratingNumber")
+            overall_rating = review.find_element(By.CLASS_NAME, "ratingNumber")
             res = int(overall_rating.text[0])
         except Exception:
             res = np.nan
@@ -225,16 +227,17 @@ def scrape(field, review, author):
                                     'css-s88v13': 5}
 
         try:
-            sub_rating_anchor = review.find_element_by_class_name('SVGInline')
+            sub_rating_anchor = review.find_element(By.CLASS_NAME, 'SVGInline')
             ActionChains(browser).move_to_element(sub_rating_anchor)
-            sub_ratings = review.find_element_by_class_name(
-                'tooltipContainer').find_element_by_tag_name('ul').find_elements_by_tag_name('li')
+            sub_ratings = review.find_element(By.CLASS_NAME,
+                                              'tooltipContainer').find_element(By.TAG_NAME,
+                                                                               'ul').find_elements(By.TAG_NAME, 'li')
             sub_ratings_res = {}
             sub_rating_anchor.click()
             for line in sub_ratings:
-                stars = line.find_element_by_css_selector("*[font-size='sm']")
+                stars = line.find_element(By.CSS_SELECTOR, "*[font-size='sm']")
                 res = convert_rating_to_number[stars.get_attribute('class').split()[0]]
-                rating_name = line.find_element_by_css_selector('div:nth-child(1)').text
+                rating_name = line.find_element(By.CSS_SELECTOR, 'div:nth-child(1)').text
                 sub_ratings_res[rating_name] = res
         except Exception:
             logger.warning('Failed to scrape subratings')
@@ -246,9 +249,9 @@ def scrape(field, review, author):
                                   'css-hcqxoa-svg': 'Yes',  # check mark
                                   'css-10xv9lv-svg': '',  # empty circle
                                   'css-1h93d4v-svg': 'Neutral'}  # line
-        status_box = review.find_element_by_class_name('recommends')
+        status_box = review.find_element(By.CLASS_NAME, 'recommends')
         recommendation_items = status_box.text.split('\n')
-        circles = status_box.find_elements_by_tag_name('svg')
+        circles = status_box.find_elements(By.TAG_NAME, 'svg')
         shapes = [convert_shapes_to_text[i.get_attribute('class').split()[1]] for i in circles]
         res = dict(zip(recommendation_items, shapes))
         return res
@@ -276,14 +279,14 @@ def scrape(field, review, author):
 def extract_from_page():
     def is_featured(review):
         try:
-            review.find_element_by_class_name('featuredFlag')
+            review.find_element(By.CLASS_NAME, 'featuredFlag')
             return True
         except NoSuchElementException:
             return False
 
     def extract_review(review):
         try:
-            author = review.find_element_by_class_name('authorInfo')
+            author = review.find_element(By.CLASS_NAME, 'authorInfo')
         except:
             return None  # Account for reviews that have been blocked
         res = {}
@@ -298,14 +301,14 @@ def extract_from_page():
 
     res = pd.DataFrame([], columns=SCHEMA)
 
-    reviews = browser.find_elements_by_class_name('empReview')
+    reviews = browser.find_elements(By.CLASS_NAME, 'empReview')
     logger.info(f'Found {len(reviews)} reviews on page {page[0]}')
 
     # refresh page if failed to load properly, else terminate the search
     if len(reviews) < 1:
         browser.refresh()
         time.sleep(5)
-        reviews = browser.find_elements_by_class_name('empReview')
+        reviews = browser.find_elements(By.CLASS_NAME, 'empReview')
         logger.info(f'Found {len(reviews)} reviews on page {page[0]}')
         if len(reviews) < 1:
             valid_page[0] = False  # make sure page is populated
@@ -334,8 +337,8 @@ def extract_from_page():
 
 def more_pages():
     try:
-        current = browser.find_element_by_class_name('selected')
-        pages = browser.find_element_by_class_name('pageContainer').text.split()
+        current = browser.find_element(By.CLASS_NAME, 'selected')
+        pages = browser.find_element(By.CLASS_NAME, 'pageContainer').text.split()
         if int(pages[-1]) != int(current.text):
             return True
         else:
@@ -346,7 +349,7 @@ def more_pages():
 
 def go_to_next_page():
     logger.info(f'Going to page {page[0] + 1}')
-    next_ = browser.find_element_by_class_name('nextButton')
+    next_ = browser.find_element(By.CLASS_NAME, 'nextButton')
     ActionChains(browser).click(next_).perform()
     time.sleep(5)  # wait for ads to load
     page[0] = page[0] + 1
@@ -367,8 +370,8 @@ def navigate_to_reviews():
         logger.info('No reviews to scrape. Bailing!')
         return False
 
-    reviews_cell = browser.find_element_by_xpath(
-        '//a[@data-label="Reviews"]')
+    reviews_cell = browser.find_element(By.XPATH,
+                                        '//a[@data-label="Reviews"]')
     reviews_path = reviews_cell.get_attribute('href')
 
     # reviews_path = driver.current_url.replace('Overview','Reviews')
@@ -385,9 +388,9 @@ def sign_in():
 
     # import pdb;pdb.set_trace()
 
-    email_field = browser.find_element_by_name('username')
-    password_field = browser.find_element_by_name('password')
-    submit_btn = browser.find_element_by_xpath('//button[@type="submit"]')
+    email_field = browser.find_element(By.NAME, 'username')
+    password_field = browser.find_element(By.NAME, 'password')
+    submit_btn = browser.find_element(By.XPATH, '//button[@type="submit"]')
 
     email_field.send_keys(args.username)
     password_field.send_keys(args.password)
@@ -400,16 +403,18 @@ def sign_in():
 def get_browser():
     logger.info('Configuring browser')
     chrome_options = wd.ChromeOptions()
+    chrome_options.binary_location = chromium_location
     if args.headless:
         chrome_options.add_argument('--headless')
     chrome_options.add_argument('log-level=3')
-    browser = wd.Chrome(chrome_driver_path, options=chrome_options)
+    service = ChromeService(executable_path=chrome_driver_path)
+    browser = wd.Chrome(service=service, options=chrome_options)
     return browser
 
 
 def get_current_page():
     logger.info('Getting current page number')
-    current = browser.find_element_by_class_name("selected")
+    current = browser.find_element(By.CLASS_NAME, "selected")
     return int(current.text)
 
 
