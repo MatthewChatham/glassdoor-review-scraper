@@ -1,2 +1,2 @@
-pandas
+pandas===1.4.3
 selenium===4.4.0
