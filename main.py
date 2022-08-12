@@ -43,7 +43,7 @@ DEFAULT_URL = ('https://www.glassdoor.com/Overview/Working-at-'
                'Premise-Data-Corporation-EI_IE952471.11,35.htm')
 
 # Download chromedriver from : https://chromedriver.chromium.org/downloads
-chrome_driver_path = '/Users/hamid/Documents/GitHub/glassdoor-review-scraper/chromedriver'
+chrome_driver_path = 'chromedriver'
 chromium_location = 'Chromium.app/Contents/MacOS/Chromium'
 Path("Outputs").mkdir(parents=True, exist_ok=True)
 
