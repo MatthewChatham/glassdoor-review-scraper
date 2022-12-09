@@ -28,7 +28,7 @@ import time
 from argparse import ArgumentParser
 from pathlib import Path
 from urllib import parse
-
+from bs4 import BeautifulSoup
 import numpy as np
 import pandas as pd
 from selenium import webdriver as wd
@@ -235,7 +235,8 @@ def scrape(field, review, author):
             for line in sub_ratings:
                 stars = line.find_element(By.CSS_SELECTOR, "*[font-size='sm']")
                 res = convert_rating_to_number[stars.get_attribute('class').split()[0]]
-                rating_name = line.find_element(By.CSS_SELECTOR, 'div:nth-child(1)').text
+                rating_html = BeautifulSoup(line.get_attribute('innerHTML'), features='html.parser')
+                rating_name = rating_html.find('div').text
                 sub_ratings_res[rating_name] = res
         except Exception:
             logger.warning('No subratings')
