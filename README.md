@@ -2,6 +2,10 @@
 This scraper is provided as a public service because Glasdoor doesn't have an API for reviews. Glassdoor TOS prohibit scraping and I make no representation that your account won't be banned if you use this program. Furthermore, should I be contacted by Glassdoor with a request to remove this repo, I will do so immediately.
 
 # Introduction
+Earlier versions of this code was based on Matthew Chatham's repo.
+However, it has drastically improved since then. 
+Matthew has not been active on GitHub and hence his repo is not updated.
+
 Have you ever wanted to scrape reviews from Glassdoor, but bemoaned the site's lack of a public API for reviews? Worry no more! This script will go through pages and pages of reviews and scrape review data into a tidy CSV file. Pass it a company page and set a limit to scrape the 25 most conveniently available reviews, or control options like the number of reviews to scrape and the max/min review publication date.
 
 It takes about 1.5 seconds per review to scrape. So it will take about 25 minutes to scrape 1,000 reviews, or a little over 4 hours to scrape 10,000 reviews. This script requires patience. 😁
@@ -10,9 +14,14 @@ It takes about 1.5 seconds per review to scrape. So it will take about 25 minute
 First, make sure that you're using Python 3.
 
 1. Clone or download this repository.
-2. Run `pip install -r requirements.txt` inside this repo. Consider doing this inside of a Python virtual environment.
-3. Install [Chromedriver](http://chromedriver.chromium.org/) in the working directory.
-4. Create a `secret.json` file containing the keys `username` and `password` with your Glassdoor login information, or pass those arguments at the command line. Note that the second method is less secure, but in any case you should consider creating a dummy Glassdoor account.
+1. Run `pip install -r requirements.txt` inside this repo. Consider doing this inside of a Python virtual environment.
+1. Create a `secret.json` file containing the keys `username` and `password` with your Glassdoor login information, 
+or pass those arguments at the command line.
+Note that the second method is less secure, but in any case you should consider creating a dummy Glassdoor account.
+```
+secret.json example:
+{"username":  "your username", "password": "your password"}
+```
 
 # Usage
 ```

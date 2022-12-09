@@ -1,8 +1,10 @@
 """
 main.py
 ----------
-Matthew Chatham, Hamid Vakilzadeh
-updated Aug 12, 2022
+Hamid Vakilzadeh
+updated Dec 9, 2022
+
+Please read README.md for more information
 
 Given a company's landing page on glassdoor and an output filename, scrape the
 following information about each employee review:
