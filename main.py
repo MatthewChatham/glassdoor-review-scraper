@@ -36,7 +36,9 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.chrome.service import Service
 from schema import SCHEMA
+from webdriver_manager.chrome import ChromeDriverManager
 
 start = time.time()
 
@@ -44,8 +46,6 @@ DEFAULT_URL = ('https://www.glassdoor.com/Overview/Working-at-'
                'Premise-Data-Corporation-EI_IE952471.11,35.htm')
 
 # Download chromedriver from : https://chromedriver.chromium.org/downloads
-chrome_driver_path = 'chromedriver'
-chromium_location = 'Chromium.app/Contents/MacOS/Chromium'
 Path("Outputs").mkdir(parents=True, exist_ok=True)
 
 parser = ArgumentParser()
@@ -120,7 +120,7 @@ logging.getLogger('selenium').setLevel(logging.CRITICAL)
 def scrape(field, review, author):
     def scrape_date(review):
         date = review.find_element(By.CLASS_NAME,
-                                   'authorJobTitle').text.split('-')[0]
+                                   'common__EiReviewDetailsStyle__newUiJobLine').text.split('-')[0]
         res = date
         return res
 
@@ -128,7 +128,7 @@ def scrape(field, review, author):
         if 'Anonymous Employee' not in review.text:
             try:
                 res = author.find_element(By.CLASS_NAME,
-                                          'authorJobTitle').text.split('-')[1]
+                                          'common__EiReviewDetailsStyle__newGrey').text.split('-')[1]
             except Exception:
                 logger.warning('Failed to scrape employee_title')
                 res = "N/A"
@@ -137,10 +137,9 @@ def scrape(field, review, author):
         return res
 
     def scrape_location(review):
-        if 'in' in review.text:
+        if ' in ' in author.text:
             try:
-                res = author.find_element(By.CLASS_NAME,
-                                          'authorLocation').text
+                res = author.text.split(' in ')[1]
             except Exception:
                 logger.warning('Failed to scrape employee_location')
                 res = np.nan
@@ -228,20 +227,18 @@ def scrape(field, review, author):
                                     'css-s88v13': 5}
 
         try:
-            sub_rating_anchor = review.find_element(By.CLASS_NAME, 'SVGInline')
-            ActionChains(browser).move_to_element(sub_rating_anchor)
-            sub_ratings = review.find_element(By.CLASS_NAME,
-                                              'tooltipContainer').find_element(By.TAG_NAME,
-                                                                               'ul').find_elements(By.TAG_NAME, 'li')
+            sub_rating_anchor = review.find_element(By.TAG_NAME, 'aside')
+            # ActionChains(browser).move_to_element(sub_rating_anchor)
+            sub_ratings = sub_rating_anchor.find_element(By.TAG_NAME, 'ul').find_elements(By.TAG_NAME, 'li')
             sub_ratings_res = {}
-            sub_rating_anchor.click()
+            # sub_rating_anchor.click()
             for line in sub_ratings:
                 stars = line.find_element(By.CSS_SELECTOR, "*[font-size='sm']")
                 res = convert_rating_to_number[stars.get_attribute('class').split()[0]]
                 rating_name = line.find_element(By.CSS_SELECTOR, 'div:nth-child(1)').text
                 sub_ratings_res[rating_name] = res
         except Exception:
-            logger.warning('Failed to scrape subratings')
+            logger.warning('No subratings')
             sub_ratings_res = {}
         return sub_ratings_res
 
@@ -287,7 +284,7 @@ def extract_from_page():
 
     def extract_review(review):
         try:
-            author = review.find_element(By.CLASS_NAME, 'authorInfo')
+            author = review.find_element(By.CLASS_NAME, 'common__EiReviewDetailsStyle__newUiJobLine')
         except NoSuchElementException:
             return None  # Account for reviews that have been blocked
         res = {}
@@ -381,19 +378,28 @@ def navigate_to_reviews():
     return True
 
 
-def sign_in():
+def sign_in_username():
     logger.info(f'Signing in to {args.username}')
 
     url = 'https://www.glassdoor.com/profile/login_input.htm'
     browser.get(url)
 
-    # import pdb;pdb.set_trace()
-
     email_field = browser.find_element(By.NAME, 'username')
-    password_field = browser.find_element(By.NAME, 'password')
-    submit_btn = browser.find_element(By.XPATH, '//button[@type="submit"]')
+    submit_btn = browser.find_element(By.NAME, 'submit')
 
     email_field.send_keys(args.username)
+    # password_field.send_keys(args.password)
+    submit_btn.click()
+
+    time.sleep(3)
+
+
+def sign_in_password():
+    logger.info(f'trying password for {args.username}')
+
+    password_field = browser.find_element(By.NAME, 'password')
+    submit_btn = browser.find_element(By.NAME, 'submit')
+
     password_field.send_keys(args.password)
     submit_btn.click()
 
@@ -404,11 +410,10 @@ def sign_in():
 def get_browser():
     logger.info('Configuring browser')
     chrome_options = wd.ChromeOptions()
-    chrome_options.binary_location = chromium_location
     if args.headless:
         chrome_options.add_argument('--headless')
     chrome_options.add_argument('log-level=3')
-    service = ChromeService(executable_path=chrome_driver_path)
+    service = Service(ChromeDriverManager().install())
     browser = wd.Chrome(service=service, options=chrome_options)
     return browser
 
@@ -444,7 +449,8 @@ def main():
 
     res = pd.DataFrame([], columns=SCHEMA)
 
-    sign_in()
+    sign_in_username()
+    sign_in_password()
 
     if not args.start_from_url:
         reviews_exist = navigate_to_reviews()
