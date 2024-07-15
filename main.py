@@ -155,10 +155,16 @@ def scrape(field, review, author):
     def scrape_rev_title(review):
         return review.find_element_by_class_name('summary').text.strip('"')
 
+
+    def scrape_years(review):
+        res = review.find_element_by_class_name('mainText').text.strip('"')
+        return res
+
     def scrape_helpful(review):
         try:
-            helpful = review.find_element_by_class_name('helpfulCount')
-            res = helpful.text[helpful.text.find('(') + 1: -1]
+            helpful = review.find_element_by_class_name('helpfulCount').text.replace('"','')
+            res = helpful[helpful.find('(') + 1: -1]
+
         except Exception:
             res = 0
         return res
@@ -172,7 +178,9 @@ def scrape(field, review, author):
 
     def scrape_pros(review):
         try:
-            pros = review.find_element_by_class_name('gdReview')
+
+            pros = review.find_element_by_class_name('v2__EIReviewDetailsV2__fullWidth')
+
             expand_show_more(pros)
             pro_index = pros.text.find('Pros')
             con_index = pros.text.find('Cons')
@@ -183,7 +191,9 @@ def scrape(field, review, author):
 
     def scrape_cons(review):
         try:
-            cons = review.find_element_by_class_name('gdReview')
+
+            cons = review.find_elements_by_class_name('v2__EIReviewDetailsV2__fullWidth')[1]
+
             expand_show_more(cons)
             con_index = cons.text.find('Cons')
             continue_index = cons.text.find('Continue reading')
@@ -194,14 +204,11 @@ def scrape(field, review, author):
 
     def scrape_advice(review):
         try:
-            advice = review.find_element_by_class_name('gdReview')
-            expand_show_more(advice)
-            advice_index = advice.text.find('Advice to Management')
-            if advice_index != -1:
-                helpful_index = advice.text.rfind('Helpful (')
-                res = advice.text[advice_index+21 : helpful_index]
-            else:
-                res = np.nan
+
+            advice = review.find_elements_by_class_name('v2__EIReviewDetailsV2__fullWidth')[2]
+            res = advice.text.replace('Advice to Management', '')
+            res = res.strip()
+
         except Exception:
             res = np.nan
         return res
@@ -496,9 +503,10 @@ def main():
     # import pdb;pdb.set_trace()
 
     while more_pages() and\
-            len(res) < args.limit and\
-            not date_limit_reached[0] and\
-                valid_page[0]:
+
+            len(res) + 1 < args.limit and\
+            not date_limit_reached[0]:
+
         go_to_next_page()
         try:
             reviews_df = extract_from_page()
